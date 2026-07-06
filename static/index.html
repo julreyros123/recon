@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recon NDS - Network Device Scanner & Dashboard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=9">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i data-lucide="eye" class="brand-icon"></i>
+                <span class="brand-name">Recon NDS</span>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item" id="btn-nav-dashboard" onclick="switchTab('dashboard')">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item active" id="btn-nav-devices" onclick="switchTab('devices')">
+                    <i data-lucide="activity"></i>
+                    <span>Devices</span>
+                </button>
+                <div class="nav-group">
+                    <button class="nav-item has-submenu" id="btn-nav-workstations-group" onclick="toggleSubmenu('workstations-submenu')">
+                        <i data-lucide="monitor"></i>
+                        <span>Workstations</span>
+                        <i data-lucide="chevron-down" class="submenu-chevron"></i>
+                    </button>
+                    <div class="nav-submenu" id="workstations-submenu" style="display:none;">
+                        <button class="nav-item sub-item" id="btn-nav-workstations" onclick="switchTab('workstations')">
+                            <i data-lucide="activity"></i>
+                            <span>Monitor</span>
+                        </button>
+                        <button class="nav-item sub-item" id="btn-nav-threat-alerts" onclick="switchTab('threat-alerts')">
+                            <i data-lucide="shield-alert"></i>
+                            <span>Threat Alerts</span>
+                            <span class="alert-nav-badge" id="workstation-alert-badge" style="display:none;">0</span>
+                        </button>
+                    </div>
+                </div>
+                <button class="nav-item" id="btn-nav-employees" onclick="switchTab('employees')">
+                    <i data-lucide="user-check"></i>
+                    <span>Employees</span>
+                </button>
+                <button class="nav-item" id="btn-nav-workspaces" onclick="switchTab('workspaces')">
+                    <i data-lucide="layout-grid"></i>
+                    <span>Workspaces</span>
+                </button>
+                <button class="nav-item" id="btn-nav-users" onclick="switchTab('users')">
+                    <i data-lucide="shield"></i>
+                    <span>Access Control</span>
+                </button>
+                <button class="nav-item" id="btn-nav-reports" onclick="switchTab('reports')">
+                    <i data-lucide="file-text"></i>
+                    <span>Scan Logs</span>
+                </button>
+                <button class="nav-item" id="btn-nav-audit" onclick="switchTab('audit')">
+                    <i data-lucide="shield-check"></i>
+                    <span>Audit Logs</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="logged-in-user-info" id="logged-in-user-info" style="display:none;">
+                    <div class="user-info-avatar" id="user-avatar-initials">SA</div>
+                    <div class="user-info-details">
+                        <span class="user-info-name" id="user-info-name">Admin</span>
+                        <span class="user-info-role" id="user-info-role-badge">super_admin</span>
+                    </div>
+                    <button class="btn-logout-icon" onclick="logout()" title="Sign Out">
+                        <i data-lucide="log-out"></i>
+                    </button>
+                </div>
+                <div class="system-status">
+                    <span class="status-indicator online"></span>
+                    <span class="status-text">Server Online</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1 id="page-title">Devices Directory</h1>
+                    <p id="page-subtitle">Real-time listing of active and logged network nodes.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="custom-subnet-container" id="custom-subnet-box">
+                        <i data-lucide="network" class="subnet-icon"></i>
+                        <input type="text" id="custom-subnet-input" placeholder="Subnet range (optional)..."
+                            title="e.g. 192.168.1.0/24 or 127.0.0.1">
+                    </div>
+                    <button class="btn btn-danger" id="btn-clear-devices" onclick="clearAllDevices()">
+                        <i data-lucide="trash-2"></i>
+                        <span>Clear Devices</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-add-device" onclick="openModal('modal-device')">
+                        <i data-lucide="plus"></i>
+                        <span>Add Device</span>
+                    </button>
+                    <button class="btn btn-primary" id="btn-trigger-scan" onclick="triggerScan()">
+                        <i data-lucide="scan"></i>
+                        <span>Scan Subnet</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Status Metrics Dashboard Row -->
+            <section class="dashboard-stats" id="dashboard-stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="monitor" class="stat-icon"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-label">Total Discovered</span>
+                        <h3 class="stat-val" id="stat-total-devices">0</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper active">
+                        <i data-lucide="wifi" class="stat-icon"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-label">Active Nodes</span>
+                        <h3 class="stat-val" id="stat-active-devices">0</h3>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper reports">
+                        <i data-lucide="clock" class="stat-icon"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-label">Last Active Scan</span>
+                        <h3 class="stat-val" id="stat-last-scan">Never</h3>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Sections -->
+            <!-- 0. Dashboard Tab -->
+            <section id="tab-dashboard" class="tab-pane">
+                <!-- KPI Cards Row -->
+                <div class="dashboard-kpi-grid" id="dashboard-kpi-grid">
+                    <div class="kpi-card kpi-blue">
+                        <div class="kpi-icon-wrap"><i data-lucide="server"></i></div>
+                        <div class="kpi-details">
+                            <span class="kpi-label">Total Devices</span>
+                            <h2 class="kpi-val" id="kpi-total">—</h2>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-green">
+                        <div class="kpi-icon-wrap"><i data-lucide="shield-check"></i></div>
+                        <div class="kpi-details">
+                            <span class="kpi-label">Trusted %</span>
+                            <h2 class="kpi-val" id="kpi-trusted-pct">—</h2>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-red">
+                        <div class="kpi-icon-wrap"><i data-lucide="shield-alert"></i></div>
+                        <div class="kpi-details">
+                            <span class="kpi-label">Active Alerts</span>
+                            <h2 class="kpi-val" id="kpi-alerts">—</h2>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-purple">
+                        <div class="kpi-icon-wrap"><i data-lucide="wifi"></i></div>
+                        <div class="kpi-details">
+                            <span class="kpi-label">Active Nodes</span>
+                            <h2 class="kpi-val" id="kpi-active">—</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="dashboard-charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h4>Trust Level Distribution</h4>
+                            <span class="chart-subtitle">All registered devices</span>
+                        </div>
+                        <div class="chart-canvas-wrap doughnut-wrap">
+                            <canvas id="chart-trust"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h4>Devices by Department</h4>
+                            <span class="chart-subtitle">Organizational breakdown</span>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="chart-dept"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card chart-card-wide">
+                        <div class="chart-card-header">
+                            <h4>Scans — Last 7 Days</h4>
+                            <span class="chart-subtitle">Background subnet sweeps</span>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="chart-scans"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h4>Device Type Breakdown</h4>
+                            <span class="chart-subtitle">By OS / hardware class</span>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="chart-os"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 1. Devices Tab -->
+            <section id="tab-devices" class="tab-pane active">
+                <div class="card table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-devices"
+                                placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="filterDevices()">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-type">Type</th>
+                                    <th>Hostname / Owner</th>
+                                    <th>IP Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Vendor</th>
+                                    <th>Trust Level</th>
+                                    <th>Patch Status</th>
+                                    <th>Open Ports</th>
+                                    <th>Last Seen</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="devices-list-body">
+                                <!-- Loaded dynamically via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Users Tab -->
+            <section id="tab-users" class="tab-pane">
+                <div class="users-header-row">
+                    <h3>Registered Operators</h3>
+                    <button class="btn btn-secondary" onclick="openModal('modal-user')">
+                        <i data-lucide="user-plus"></i>
+                        <span>Add Operator</span>
+                    </button>
+                </div>
+                <div class="card table-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-list-body">
+                                <!-- Loaded dynamically via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Reports Tab -->
+            <section id="tab-reports" class="tab-pane">
+                <div class="card table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-reports" placeholder="Filter by subnet or summary..."
+                                oninput="filterReports()">
+                        </div>
+                        <button class="btn btn-secondary btn-export" id="btn-export-reports"
+                            onclick="exportCSV('reports')">
+                            <i data-lucide="download"></i>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Scan Date / Time</th>
+                                    <th>Subnet Scope</th>
+                                    <th>Devices Found</th>
+                                    <th>Active Devices</th>
+                                    <th>Scan Duration</th>
+                                    <th>Summary Description</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-list-body">
+                                <!-- Loaded dynamically via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Audit Tab -->
+            <section id="tab-audit" class="tab-pane">
+                <div class="card table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-audit" placeholder="Filter by operator, action or target..."
+                                oninput="filterAuditLogs()">
+                        </div>
+                        <div class="audit-filter-group">
+                            <select id="audit-action-filter" class="filter-select" onchange="filterAuditLogs()">
+                                <option value="">All Actions</option>
+                                <option value="AUTH">AUTH</option>
+                                <option value="SCAN">SCAN</option>
+                                <option value="REGISTER">REGISTER</option>
+                                <option value="UPDATE">UPDATE</option>
+                                <option value="POLICY">POLICY</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                            <button class="btn btn-secondary btn-export" id="btn-export-audit"
+                                onclick="exportCSV('audit')">
+                                <i data-lucide="download"></i>
+                                <span>Export CSV</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Operator</th>
+                                    <th>Role</th>
+                                    <th>Action</th>
+                                    <th>Target MAC/IP</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-list-body">
+                                <!-- Loaded dynamically via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Workstations Tab -->
+            <section id="tab-workstations" class="tab-pane">
+                <div class="workstations-split-layout">
+                    <!-- Sidebar List -->
+                    <div class="workstations-sidebar" id="workstations-sidebar">
+                        <div class="workstations-list-header">
+                            <h3>Monitored Units</h3>
+                            <div class="workstations-list-actions">
+                                <span class="live-indicator">
+                                    <span class="pulse-dot"></span>
+                                    <span>Live</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="workstations-list" id="workstations-list">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Workstation Details Pane -->
+                    <div id="workstation-details-pane" class="card workstation-details-card" style="display: none;">
+                        <div class="details-header">
+                            <div class="details-host-info">
+                                <h3 id="details-hostname">Workstation-PC</h3>
+                                <span id="details-os">Windows 10</span>
+                                <div class="details-subinfo-row">
+                                    <code class="code-ip" id="details-ip">192.168.1.101</code>
+                                    <code class="code-mac" id="details-mac">33:44:55:66:77:88</code>
+                                </div>
+                            </div>
+                            <div class="details-actions">
+                                <span id="details-isolation-status" class="isolation-badge" style="display: none;">HOST
+                                    ISOLATED</span>
+                                <button class="btn btn-danger" id="btn-isolate-host" onclick="triggerHostIsolation()">
+                                    <i data-lucide="shield-off"></i>
+                                    <span>Isolate Host</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="details-metrics-row">
+                            <div class="metric-gauge-card">
+                                <div class="gauge-header">
+                                    <span>CPU Utilization</span>
+                                    <span class="gauge-value" id="gauge-cpu-val">0%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" id="gauge-cpu-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div class="metric-gauge-card">
+                                <div class="gauge-header">
+                                    <span>Memory Utilization</span>
+                                    <span class="gauge-value" id="gauge-ram-val">0%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" id="gauge-ram-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="details-tabbed-container">
+                            <div class="details-tab-nav">
+                                <button class="details-tab-btn active" id="btn-dt-processes"
+                                    onclick="switchDetailsTab('processes')">Processes</button>
+                                <button class="details-tab-btn" id="btn-dt-network"
+                                    onclick="switchDetailsTab('network')">Network Sockets</button>
+                                <button class="details-tab-btn" id="btn-dt-usb" onclick="switchDetailsTab('usb')">USB
+                                    Devices</button>
+                                <button class="details-tab-btn" id="btn-dt-sessions"
+                                    onclick="switchDetailsTab('sessions')">Active Sessions</button>
+                            </div>
+
+                            <div class="details-tab-content">
+                                <!-- 1. Processes Tab -->
+                                <div id="details-tab-processes" class="details-pane active">
+                                    <div class="details-table-header">
+                                        <div class="search-box">
+                                            <i data-lucide="search" class="search-icon"></i>
+                                            <input type="text" id="search-processes"
+                                                placeholder="Filter running processes..." oninput="filterProcesses()">
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive details-table-scroll">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>PID</th>
+                                                    <th>Process Name</th>
+                                                    <th>Command Line Parameters</th>
+                                                    <th>Security Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="details-processes-list">
+                                                <!-- Loaded dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Network Tab -->
+                                <div id="details-tab-network" class="details-pane">
+                                    <div class="table-responsive details-table-scroll">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Protocol</th>
+                                                    <th>Local Endpoint</th>
+                                                    <th>Remote Endpoint</th>
+                                                    <th>State</th>
+                                                    <th>Security Check</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="details-network-list">
+                                                <!-- Loaded dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 3. USB Tab -->
+                                <div id="details-tab-usb" class="details-pane">
+                                    <div class="table-responsive details-table-scroll">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Device Description</th>
+                                                    <th>Device Class</th>
+                                                    <th>Hardware ID</th>
+                                                    <th>Policy Check</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="details-usb-list">
+                                                <!-- Loaded dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Sessions Tab -->
+                                <div id="details-tab-sessions" class="details-pane">
+                                    <div class="table-responsive details-table-scroll">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Username</th>
+                                                    <th>Session Type</th>
+                                                    <th>Login State</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="details-sessions-list">
+                                                <!-- Loaded dynamically -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5b. Threat Alerts Tab -->
+            <section id="tab-threat-alerts" class="tab-pane">
+                <div class="threat-alerts-page-container">
+                    <div id="workstations-alerts-banner-container" class="alerts-banner-container"
+                        style="display: none;">
+                        <div class="alerts-banner-header">
+                            <div class="alert-pulse-title">
+                                <i data-lucide="shield-alert" class="alert-header-icon animate-pulse"></i>
+                                <h4>Active Security Threat Alerts</h4>
+                            </div>
+                            <span class="active-alerts-count-badge" id="active-threats-count">0 Alerts</span>
+                        </div>
+                        <div id="global-alerts-list" class="global-alerts-list full-page-alerts-list">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+                    <div id="no-threats-placeholder" class="no-data-placeholder" style="display: none;">
+                        <i data-lucide="shield-check" style="width: 48px; height: 48px; color: #10b981; margin-bottom: 16px;"></i>
+                        <h3>System Secure</h3>
+                        <p>No active threats detected across monitored workstations.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Employees (HR) Tab -->
+            <section id="tab-employees" class="tab-pane">
+                <div class="users-header-row">
+                    <h3>HR Employee Directory</h3>
+                    <button class="btn btn-secondary" id="btn-add-employee" onclick="openModal('modal-employee')">
+                        <i data-lucide="user-plus"></i>
+                        <span>Add Employee</span>
+                    </button>
+                </div>
+                <div class="card table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-employees"
+                                placeholder="Filter by name, department, or position..." oninput="filterEmployees()">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Emp. ID</th>
+                                    <th>Full Name</th>
+                                    <th>Position</th>
+                                    <th>Department</th>
+                                    <th>Email</th>
+                                    <th>Date Hired</th>
+                                    <th>System Account</th>
+                                    <th>Status</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-list-body">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. Workspaces Tab -->
+            <section id="tab-workspaces" class="tab-pane">
+                <div class="users-header-row">
+                    <h3>Workspace Management</h3>
+                    <button class="btn btn-secondary" id="btn-add-workspace" onclick="openModal('modal-workspace')">
+                        <i data-lucide="plus"></i>
+                        <span>New Workspace</span>
+                    </button>
+                </div>
+                <div id="workspaces-grid" class="workspaces-grid">
+                    <!-- Loaded dynamically -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Trusted Devices Sidebar -->
+        <aside class="trusted-sidebar" id="trusted-sidebar">
+            <div class="trusted-sidebar-header">
+                <h3>Trusted PCs</h3>
+                <span class="pulse-dot"></span>
+            </div>
+            <div class="trusted-list" id="trusted-devices-list">
+                <!-- Loaded dynamically -->
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modals Section -->
+    <!-- Add/Edit Device Modal -->
+    <div class="modal-overlay" id="modal-device">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="device-modal-title">Add Network Device</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-device')">&times;</button>
+            </div>
+            <form id="form-device" onsubmit="saveDevice(event)">
+                <input type="hidden" id="edit-device-id">
+                <div class="modal-body form-grid">
+                    <div class="form-group">
+                        <label for="device-ip">IP Address <span class="required">*</span></label>
+                        <input type="text" id="device-ip" placeholder="e.g. 192.168.1.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-mac">MAC Address</label>
+                        <input type="text" id="device-mac" placeholder="e.g. AA:BB:CC:DD:EE:FF">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-hostname">Hostname</label>
+                        <input type="text" id="device-hostname" placeholder="e.g. Printer-office">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-vendor">Vendor / Brand</label>
+                        <input type="text" id="device-vendor" placeholder="e.g. HP Inc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-status">Status</label>
+                        <select id="device-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="unknown">Unknown</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-type">Device Type</label>
+                        <select id="device-type">
+                            <option value="generic">Generic Device</option>
+                            <option value="workstation">Workstation / Laptop</option>
+                            <option value="server">Server</option>
+                            <option value="router">Router / Gateway</option>
+                            <option value="printer">Printer</option>
+                            <option value="smart-tv">Smart TV / Screen</option>
+                            <option value="mobile">Mobile / Tablet</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-owner">Owner Name</label>
+                        <input type="text" id="device-owner" placeholder="e.g. Jane Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-dept">Department</label>
+                        <select id="device-dept">
+                            <option value="None">None</option>
+                            <option value="IT">IT</option>
+                            <option value="HR">HR</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-trust-level">Trust Level</label>
+                        <select id="device-trust-level">
+                            <option value="Unknown">Unknown</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Trusted">Trusted</option>
+                            <option value="Blocked">Blocked</option>
+                        </select>
+                    </div>
+                    <div class="form-group form-group-full">
+                        <label for="device-purpose">Purpose</label>
+                        <input type="text" id="device-purpose" placeholder="e.g. Workstation Office Host">
+                    </div>
+                    <div class="modal-section-divider">OS &amp; Patch Information</div>
+                    <div class="form-group">
+                        <label for="device-baseline-os">Baseline OS <span class="field-hint">(recorded at registration)</span></label>
+                        <input type="text" id="device-baseline-os" placeholder="e.g. Windows 11 Pro 23H2">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-current-os">Current OS / Firmware</label>
+                        <input type="text" id="device-current-os" placeholder="e.g. Windows 11 Pro 24H2">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-firmware-version">Installed Version</label>
+                        <input type="text" id="device-firmware-version" placeholder="e.g. 22631.3880">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-latest-firmware">Latest Available Version</label>
+                        <input type="text" id="device-latest-firmware" placeholder="e.g. 22631.4460">
+                    </div>
+                    <div class="form-group">
+                        <label for="device-firmware-eol">End-of-Life?</label>
+                        <select id="device-firmware-eol">
+                            <option value="false">No — Still Supported</option>
+                            <option value="true">Yes — End of Life</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-tertiary" onclick="closeModal('modal-device')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add System User Modal -->
+    <div class="modal-overlay" id="modal-user">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Add System User</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-user')">&times;</button>
+            </div>
+            <form id="form-user" onsubmit="saveUser(event)">
+                <div class="modal-body form-grid">
+                    <div class="form-group">
+                        <label for="user-username">Username <span class="required">*</span></label>
+                        <input type="text" id="user-username" placeholder="e.g. jdoe" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-fullname">Full Name</label>
+                        <input type="text" id="user-fullname" placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email Address</label>
+                        <input type="email" id="user-email" placeholder="e.g. john.doe@reconnds.local">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-role">System Role</label>
+                        <select id="user-role">
+                            <option value="user">Department Staff</option>
+                            <option value="operator">IT Security Officer</option>
+                            <option value="super_admin">Network Administrator</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="user-active" checked>
+                        <label for="user-active">Account Active</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-tertiary" onclick="closeModal('modal-user')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div class="modal-overlay" id="modal-employee">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="employee-modal-title">Add HR Employee Profile</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-employee')">&times;</button>
+            </div>
+            <form id="form-employee" onsubmit="saveEmployee(event)">
+                <input type="hidden" id="edit-employee-id">
+                <div class="modal-body form-grid">
+                    <div class="form-group">
+                        <label for="emp-id">Employee ID</label>
+                        <input type="text" id="emp-id" placeholder="e.g. EMP-005">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-fullname">Full Name <span class="required">*</span></label>
+                        <input type="text" id="emp-fullname" placeholder="e.g. Maria Santos" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-position">Position / Job Title</label>
+                        <input type="text" id="emp-position" placeholder="e.g. HR Coordinator">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-dept">Department</label>
+                        <select id="emp-dept">
+                            <option value="">— Select —</option>
+                            <option value="IT">IT</option>
+                            <option value="Human Resources">Human Resources</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Operations">Operations</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-email">Email</label>
+                        <input type="email" id="emp-email" placeholder="e.g. msantos@company.local">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-phone">Phone</label>
+                        <input type="text" id="emp-phone" placeholder="e.g. +63-912-345-6789">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-hired">Date Hired</label>
+                        <input type="date" id="emp-hired">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-user-id">Link to System Account (optional)</label>
+                        <select id="emp-user-id">
+                            <option value="">— No linked account —</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-tertiary"
+                        onclick="closeModal('modal-employee')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Workspace Modal -->
+    <div class="modal-overlay" id="modal-workspace">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="workspace-modal-title">Create Workspace</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-workspace')">&times;</button>
+            </div>
+            <form id="form-workspace" onsubmit="saveWorkspace(event)">
+                <input type="hidden" id="edit-workspace-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ws-name">Workspace Name <span class="required">*</span></label>
+                        <input type="text" id="ws-name" placeholder="e.g. IT Server Room" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ws-location">Physical Location</label>
+                        <input type="text" id="ws-location" placeholder="e.g. Building A - Floor 1">
+                    </div>
+                    <div class="form-group form-group-full">
+                        <label for="ws-description">Description</label>
+                        <input type="text" id="ws-description"
+                            placeholder="e.g. Main server room and network infrastructure">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-tertiary"
+                        onclick="closeModal('modal-workspace')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Workspace</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Super Admin PIN Verification Modal -->
+    <div class="modal-overlay" id="modal-pin-verify">
+        <div class="modal-container modal-pin-container">
+            <div class="modal-header">
+                <div class="pin-header-icon"><i data-lucide="shield-alert"></i></div>
+                <h3>Super Admin PIN Required</h3>
+            </div>
+            <div class="modal-body pin-modal-body">
+                <p class="pin-description">Your account requires a secondary PIN for enhanced security. Enter your
+                    6-digit PIN to continue.</p>
+                <div class="pin-input-group" id="pin-input-group">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d1"
+                        oninput="pinAutoFocus(this, 'pin-d2')" onkeydown="pinKeyDown(event, this, null)">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d2"
+                        oninput="pinAutoFocus(this, 'pin-d3')" onkeydown="pinKeyDown(event, this, 'pin-d1')">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d3"
+                        oninput="pinAutoFocus(this, 'pin-d4')" onkeydown="pinKeyDown(event, this, 'pin-d2')">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d4"
+                        oninput="pinAutoFocus(this, 'pin-d5')" onkeydown="pinKeyDown(event, this, 'pin-d3')">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d5"
+                        oninput="pinAutoFocus(this, 'pin-d6')" onkeydown="pinKeyDown(event, this, 'pin-d4')">
+                    <input type="password" maxlength="1" class="pin-digit" id="pin-d6"
+                        oninput="pinAutoFocus(this, null)" onkeydown="pinKeyDown(event, this, 'pin-d5')">
+                </div>
+                <p class="pin-error-msg" id="pin-error-msg" style="display:none;">Incorrect PIN. Please try again.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-tertiary" onclick="logout()">Cancel / Sign Out</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-pin" onclick="submitPin()">Verify
+                    PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Port Scan Results Modal -->
+    <div class="modal-overlay" id="modal-ports">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Open Ports Scan Results</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-ports')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ports-host-details">
+                    <div class="ports-host-row">
+                        <span>IP Address: <strong id="ports-modal-ip">N/A</strong></span>
+                        <span>Hostname: <strong id="ports-modal-hostname">N/A</strong></span>
+                    </div>
+                    <div>Scan Method: <span class="scan-method-badge">Nmap Fast Port Sweep (-F)</span></div>
+                </div>
+                <div class="table-responsive ports-table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Port</th>
+                                <th>Protocol</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ports-list-body">
+                            <!-- Loaded dynamically via Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-ports')">Close Results</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolve Workstation Threat Alert Modal -->
+    <div class="modal-overlay" id="modal-resolve-alert">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Resolve Security Threat Alert</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-resolve-alert')">&times;</button>
+            </div>
+            <form id="form-resolve-alert" onsubmit="submitResolveAlert(event)">
+                <input type="hidden" id="resolve-alert-id">
+                <div class="modal-body">
+                    <div class="alert-details-card"
+                        style="background-color: var(--gray-50); border: 1px solid var(--color-border); border-radius: var(--border-radius-md); padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="alert-detail-title" id="resolve-alert-title"
+                            style="font-size: 16px; font-weight: 700; color: var(--gray-900);">Mimikatz Credential
+                            Dumper Detected</div>
+                        <p class="alert-detail-desc" id="resolve-alert-desc"
+                            style="font-size: 13px; color: var(--color-text-muted); line-height: 1.4;"></p>
+                        <div class="alert-detail-meta"
+                            style="margin-top: 8px; font-size: 12px; color: var(--color-text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--color-border); padding-top: 8px;">
+                            <span>Host: <strong id="resolve-alert-host">Workstation-PC</strong></span>
+                            <span>Severity: <span class="badge" id="resolve-alert-severity"
+                                    style="padding: 2px 8px;">Critical</span></span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label for="resolve-notes"
+                            style="font-size: 13px; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px; display: block;">Investigation
+                            / Resolution Notes <span class="required">*</span></label>
+                        <textarea id="resolve-notes" rows="4"
+                            placeholder="Describe findings, actions taken (e.g. process terminated, host isolated, malware quarantined), and justification for closing this alert..."
+                            required
+                            style="padding: 10px; font-size: 14px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); outline: none; resize: vertical; width: 100%; font-family: inherit;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-tertiary"
+                        onclick="closeModal('modal-resolve-alert')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Resolution</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Scanning Loader Overlay -->
+    <div class="modal-overlay scanning-overlay" id="scanning-loader">
+        <div class="scanner-status-card">
+            <div class="spinner"></div>
+            <h3 id="scanner-loader-title">Scanning Local Subnet</h3>
+            <p id="scanner-loader-description">Recon NDS is analyzing ARP responses and querying active hostnames.
+                Please hold on...</p>
+            <div class="progress-details" id="scan-progress-text">Initializing Nmap packet routing...</div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Login Overlay Panel -->
+    <div class="login-overlay active" id="login-overlay">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo-wrap">
+                    <i data-lucide="eye" class="login-logo-icon"></i>
+                </div>
+                <h2>Recon NDS</h2>
+                <p>Network Device Identity &amp; Tracking Console</p>
+            </div>
+            <form id="form-login" onsubmit="handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="user" class="input-icon"></i>
+                        <input type="text" id="login-username" placeholder="Enter your username" required autocomplete="username">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="lock" class="input-icon"></i>
+                        <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-login">
+                    <span>Sign In</span>
+                </button>
+            </form>
+            <div class="login-footer">
+                <p class="login-footer-text">Authorized personnel only &mdash; all access is monitored and logged.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Script -->
+    <script src="/static/js/app.js?v=4"></script>
+</body>
+
+</html>

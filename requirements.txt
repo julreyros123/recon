@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+scapy
+apscheduler
+fpdf2
+bcrypt
+psutil
+pysnmp
+httpx

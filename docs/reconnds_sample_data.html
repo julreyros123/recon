@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Calibri, sans-serif;
+            font-size: 10.5pt; /* Smaller font to fit more columns */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed; /* Forces the table to stay within 100% width */
+            word-wrap: break-word; /* Makes long text wrap instead of stretching columns */
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 4px; /* Reduced padding to save space */
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        h3 {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>ReconNDS Sample Data</h2>
+
+    <h3>1. User Information</h3>
+    <table>
+        <tr><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th></tr>
+        <tr><td>superadmin</td><td>Maria Santos</td><td>msantos@reconndsprivate.sch</td><td>Super Admin</td><td>Active</td></tr>
+        <tr><td>itadmin01</td><td>Jose Reyes</td><td>jreyes@reconndsprivate.sch</td><td>IT Admin</td><td>Active</td></tr>
+        <tr><td>staff.cruz</td><td>Ana Cruz</td><td>acruz@reconndsprivate.sch</td><td>Staff</td><td>Active</td></tr>
+    </table>
+
+    <h3>2. Network Device Inventory</h3>
+    <table>
+        <tr><th>Hostname</th><th>IP Address</th><th>MAC Address</th><th>Vendor</th><th>Trust Level</th><th>Open Ports</th><th>Last Seen</th></tr>
+        <tr><td>PC-ADMIN-01</td><td>192.168.1.10</td><td>A4:C3:F0:85:2D:11</td><td>Dell Inc.</td><td>Trusted</td><td>80, 443</td><td>Just now</td></tr>
+        <tr><td>LAPTOP-FACULTY02</td><td>192.168.1.25</td><td>B8:27:EB:44:1A:C9</td><td>HP Inc.</td><td>Trusted</td><td>None</td><td>2 min ago</td></tr>
+        <tr><td>UNKNOWN-DEVICE</td><td>192.168.1.88</td><td>F2:3D:9A:01:CC:47</td><td>Unknown</td><td>Unknown</td><td>22, 8080</td><td>5 min ago</td></tr>
+        <tr><td>PRINTER-LIB</td><td>192.168.1.55</td><td>00:1A:2B:3C:4D:5E</td><td>Canon</td><td>Trusted</td><td>9100</td><td>10 min ago</td></tr>
+        <tr><td>ROGUE-LAPTOP</td><td>192.168.1.99</td><td>DE:AD:BE:EF:12:34</td><td>Unknown</td><td>Blocked</td><td>21, 23</td><td>1 hr ago</td></tr>
+    </table>
+
+    <h3>3. Packet Capture Logs</h3>
+    <table>
+        <tr><th>Scan Date/Time</th><th>Subnet Scope</th><th>Devices Found</th><th>Active Devices</th><th>Duration</th><th>Summary</th></tr>
+        <tr><td>2026-06-29 08:00:12</td><td>192.168.1.0/24</td><td>5</td><td>4</td><td>3.21s</td><td>Completed nmap scan on 192.168.1.0/24</td></tr>
+        <tr><td>2026-06-28 17:45:33</td><td>192.168.1.0/24</td><td>4</td><td>3</td><td>4.58s</td><td>Completed nmap scan on 192.168.1.0/24</td></tr>
+        <tr><td>2026-06-28 08:02:10</td><td>192.168.1.0/24</td><td>5</td><td>5</td><td>2.97s</td><td>Completed nmap scan on 192.168.1.0/24</td></tr>
+    </table>
+
+    <h3>4. Spoofing Detection Logs</h3>
+    <table>
+        <tr><th>Timestamp</th><th>Source IP</th><th>Spoofed MAC</th><th>Real MAC</th><th>Detection Type</th><th>Severity</th></tr>
+        <tr><td>2026-06-28 10:14:05</td><td>192.168.1.88</td><td>F2:3D:9A:01:CC:47</td><td>A4:C3:F0:85:2D:11</td><td>ARP Spoofing</td><td>High</td></tr>
+        <tr><td>2026-06-27 15:33:22</td><td>192.168.1.99</td><td>DE:AD:BE:EF:12:34</td><td>B8:27:EB:44:1A:C9</td><td>MAC Spoofing</td><td>Critical</td></tr>
+        <tr><td>2026-06-26 09:05:47</td><td>192.168.1.77</td><td>CC:AA:BB:DD:EE:FF</td><td>00:1A:2B:3C:4D:5E</td><td>IP Spoofing</td><td>Medium</td></tr>
+    </table>
+
+    <h3>5. Alert Logs</h3>
+    <table>
+        <tr><th>Timestamp</th><th>Alert Type</th><th>Affected Device</th><th>IP Address</th><th>Severity</th><th>Status</th></tr>
+        <tr><td>2026-06-29 08:01:44</td><td>Unknown Device Detected</td><td>UNKNOWN-DEVICE</td><td>192.168.1.88</td><td>High</td><td>Unresolved</td></tr>
+        <tr><td>2026-06-28 10:14:06</td><td>ARP Spoofing Attempt</td><td>UNKNOWN-DEVICE</td><td>192.168.1.88</td><td>Critical</td><td>Resolved</td></tr>
+        <tr><td>2026-06-27 15:33:23</td><td>Blocked Device Reconnect</td><td>ROGUE-LAPTOP</td><td>192.168.1.99</td><td>High</td><td>Unresolved</td></tr>
+    </table>
+
+    <h3>6. Network Traffic Statistics</h3>
+    <table>
+        <tr><th>Timestamp</th><th>Total Packets</th><th>Bytes Sent</th><th>Bytes Received</th><th>Active Connections</th><th>Top Protocol</th></tr>
+        <tr><td>2026-06-29 08:00:00</td><td>24,310</td><td>142.3 MB</td><td>389.7 MB</td><td>4</td><td>TCP</td></tr>
+        <tr><td>2026-06-28 17:00:00</td><td>19,855</td><td>98.6 MB</td><td>275.1 MB</td><td>3</td><td>UDP</td></tr>
+        <tr><td>2026-06-28 08:00:00</td><td>31,042</td><td>210.4 MB</td><td>502.8 MB</td><td>5</td><td>TCP</td></tr>
+    </table>
+
+    <h3>7. System Activity Logs</h3>
+    <table>
+        <tr><th>Timestamp</th><th>Operator</th><th>Role</th><th>Action</th><th>Target MAC/IP</th><th>Details</th></tr>
+        <tr><td>2026-06-29 08:00:12</td><td>msantos</td><td>Super Admin</td><td>Ran subnet scan</td><td>192.168.1.0/24</td><td>Scheduled morning scan</td></tr>
+        <tr><td>2026-06-28 10:20:00</td><td>jreyes</td><td>IT Admin</td><td>Changed trust level to Blocked</td><td>DE:AD:BE:EF:12:34</td><td>Rogue device isolated</td></tr>
+        <tr><td>2026-06-28 09:45:11</td><td>jreyes</td><td>IT Admin</td><td>Isolated host</td><td>192.168.1.99</td><td>Threat containment</td></tr>
+        <tr><td>2026-06-27 14:10:33</td><td>acruz</td><td>Staff</td><td>Viewed device details</td><td>192.168.1.55</td><td>Routine check</td></tr>
+    </table>
+
+    <h3>8. Report Information</h3>
+    <table>
+        <tr><th>Report ID</th><th>Title</th><th>Generated By</th><th>Date</th><th>Type</th></tr>
+        <tr><td>RPT-2026-001</td><td>Weekly Security Summary</td><td>msantos</td><td>2026-06-29</td><td>Security Summary</td></tr>
+        <tr><td>RPT-2026-002</td><td>Device Inventory Report</td><td>jreyes</td><td>2026-06-28</td><td>Device Inventory</td></tr>
+        <tr><td>RPT-2026-003</td><td>Threat & Spoofing Analysis</td><td>msantos</td><td>2026-06-27</td><td>Threat Analysis</td></tr>
+    </table>
+
+    <h3>9. System Configuration</h3>
+    <table>
+        <tr><th>Setting</th><th>Configured Value</th></tr>
+        <tr><td>Default Subnet Range</td><td>192.168.1.0/24</td></tr>
+        <tr><td>Scan Mode</td><td>On-demand + Scheduled (8:00 AM daily)</td></tr>
+        <tr><td>Alert Notification Email</td><td>alerts@reconndsprivate.sch</td></tr>
+        <tr><td>Session Timeout</td><td>30 minutes</td></tr>
+        <tr><td>Max Failed Login Attempts</td><td>5</td></tr>
+        <tr><td>Trusted MAC Auto-Approve</td><td>Disabled</td></tr>
+        <tr><td>Log Retention Period</td><td>90 days</td></tr>
+    </table>
+
+    <h3>10. Threat Intelligence Database</h3>
+    <table>
+        <tr><th>Threat ID</th><th>Threat Name</th><th>Type</th><th>Signature/Indicator</th><th>Risk Level</th><th>Recommended Action</th></tr>
+        <tr><td>THR-001</td><td>ARP Cache Poisoning</td><td>ARP Spoofing</td><td>Duplicate IP-to-MAC mapping detected</td><td>Critical</td><td>Block device, alert IT Admin</td></tr>
+        <tr><td>THR-002</td><td>MAC Address Flooding</td><td>MAC Spoofing</td><td>High volume of unknown MACs in short period</td><td>High</td><td>Alert and monitor</td></tr>
+        <tr><td>THR-003</td><td>Rogue Device Access</td><td>Unauthorized Device</td><td>Unregistered MAC connected to network</td><td>High</td><td>Flag, notify, isolate</td></tr>
+        <tr><td>THR-004</td><td>Open Telnet Port</td><td>Vulnerability</td><td>Port 23 open on unknown device</td><td>Medium</td><td>Scan & report</td></tr>
+        <tr><td>THR-005</td><td>Repeated Auth Failure</td><td>Brute Force</td><td>5+ failed logins from same IP</td><td>Medium</td><td>Lock account, alert admin</td></tr>
+    </table>
+
+    <h3>11. Dashboard Analytics</h3>
+    <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Total Discovered Devices</td><td>5</td></tr>
+        <tr><td>Active Nodes</td><td>4</td></tr>
+        <tr><td>Trusted Devices</td><td>3</td></tr>
+        <tr><td>Unknown Devices</td><td>1</td></tr>
+        <tr><td>Blocked Devices</td><td>1</td></tr>
+        <tr><td>Open Alerts</td><td>2</td></tr>
+        <tr><td>Last Subnet Scan</td><td>2026-06-29 08:00:12</td></tr>
+        <tr><td>Scan Duration</td><td>3.21s</td></tr>
+        <tr><td>Top Threat This Week</td><td>ARP Cache Poisoning</td></tr>
+    </table>
+
+</body>
+</html>
