@@ -157,10 +157,7 @@ def scan_network_nmap(ip_range: str) -> List[Dict[str, Any]]:
                 hostname = hn_nodes[0].get("name")
                 
         if not hostname:
-            try:
-                hostname = socket.gethostbyaddr(ip)[0]
-            except Exception:
-                hostname = f"device-{ip.replace('.', '-')}"
+            hostname = f"device-{ip.replace('.', '-')}"
                 
         devices.append({
             "ip": ip,
