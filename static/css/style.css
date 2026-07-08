@@ -1446,6 +1446,12 @@ tr:hover .device-type-icon-wrapper {
     animation: loginSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.login-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 @keyframes loginSlideUp {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
