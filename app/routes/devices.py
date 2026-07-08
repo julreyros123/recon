@@ -335,8 +335,21 @@ def execute_background_scan(subnet: Optional[str] = None):
                         params
                     )
 
+        import ipaddress
+        try:
+            scan_net = ipaddress.ip_network(scan_result["subnet"])
+        except Exception:
+            scan_net = None
+
         for old_ip, old_dev in old_devices.items():
-            if old_ip not in scanned_ips and old_dev["status"] == "active":
+            in_subnet = False
+            if scan_net:
+                try:
+                    in_subnet = ipaddress.ip_address(old_ip) in scan_net
+                except Exception:
+                    in_subnet = False
+            
+            if in_subnet and old_ip not in scanned_ips and old_dev["status"] == "active":
                 cursor.execute("UPDATE devices SET status = 'inactive', last_seen = CURRENT_TIMESTAMP WHERE ip = ?", (old_ip,))
                 
                 cursor.execute(
