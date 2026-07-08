@@ -2083,12 +2083,12 @@ function renderDashboardCharts(data) {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } }
+                labels: { color: '#64748b', font: { family: 'Inter', size: 12, weight: '500' } }
             }
         }
     };
 
-    const trustColors = ['#22c55e', '#f59e0b', '#ef4444', '#6366f1'];
+    const trustColors = ['#10b981', '#f59e0b', '#ef4444', '#64748b'];
     const trust = data.trust_distribution;
 
     // 1. Doughnut: Trust Level
@@ -2102,8 +2102,8 @@ function renderDashboardCharts(data) {
                 datasets: [{
                     data: [trust.Trusted, trust.Unknown, trust.Blocked, trust.Pending],
                     backgroundColor: trustColors,
-                    borderColor: '#1e293b',
-                    borderWidth: 3
+                    borderColor: '#ffffff',
+                    borderWidth: 2
                 }]
             },
             options: {
@@ -2111,7 +2111,7 @@ function renderDashboardCharts(data) {
                 cutout: '65%',
                 plugins: {
                     ...chartDefaults.plugins,
-                    legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 16 } }
+                    legend: { position: 'bottom', labels: { color: '#64748b', font: { family: 'Inter', size: 11 }, padding: 16 } }
                 }
             }
         });
@@ -2121,6 +2121,11 @@ function renderDashboardCharts(data) {
     const ctxDept = document.getElementById("chart-dept");
     if (ctxDept) {
         if (chartDept) chartDept.destroy();
+        const ctx2d = ctxDept.getContext('2d');
+        const gradient = ctx2d.createLinearGradient(0, 0, 0, 220);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.85)'); // Indigo
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.15)');
+
         chartDept = new Chart(ctxDept, {
             type: 'bar',
             data: {
@@ -2128,15 +2133,17 @@ function renderDashboardCharts(data) {
                 datasets: [{
                     label: 'Devices',
                     data: data.department_distribution.values,
-                    backgroundColor: '#6366f1',
+                    backgroundColor: gradient,
+                    borderColor: '#6366f1',
+                    borderWidth: 1,
                     borderRadius: 6
                 }]
             },
             options: {
                 ...chartDefaults,
                 scales: {
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                    y: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#1e293b' } }
+                    x: { ticks: { color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                    y: { ticks: { color: '#64748b', stepSize: 1 }, grid: { color: '#f1f5f9' } }
                 },
                 plugins: { legend: { display: false } }
             }
@@ -2147,6 +2154,11 @@ function renderDashboardCharts(data) {
     const ctxScans = document.getElementById("chart-scans");
     if (ctxScans) {
         if (chartScans) chartScans.destroy();
+        const ctx2d = ctxScans.getContext('2d');
+        const gradient = ctx2d.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.22)'); // Emerald
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+
         chartScans = new Chart(ctxScans, {
             type: 'line',
             data: {
@@ -2154,19 +2166,22 @@ function renderDashboardCharts(data) {
                 datasets: [{
                     label: 'Scans',
                     data: data.scan_history.counts.length > 0 ? data.scan_history.counts : [0],
-                    borderColor: '#22c55e',
-                    backgroundColor: 'rgba(34,197,94,0.12)',
+                    borderColor: '#10b981',
+                    backgroundColor: gradient,
                     fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: '#22c55e',
-                    pointRadius: 4
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }]
             },
             options: {
                 ...chartDefaults,
                 scales: {
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                    y: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#1e293b' }, beginAtZero: true }
+                    x: { ticks: { color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                    y: { ticks: { color: '#64748b', stepSize: 1 }, grid: { color: '#f1f5f9' }, beginAtZero: true }
                 },
                 plugins: { legend: { display: false } }
             }
@@ -2177,7 +2192,11 @@ function renderDashboardCharts(data) {
     const ctxOs = document.getElementById("chart-os");
     if (ctxOs) {
         if (chartOs) chartOs.destroy();
-        const osColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#ec4899', '#14b8a6'];
+        const ctx2d = ctxOs.getContext('2d');
+        const gradient = ctx2d.createLinearGradient(0, 0, 300, 0); // Horizontal gradient
+        gradient.addColorStop(0, 'rgba(20, 184, 166, 0.85)'); // Teal
+        gradient.addColorStop(1, 'rgba(14, 165, 233, 0.35)'); // Cyan
+
         chartOs = new Chart(ctxOs, {
             type: 'bar',
             data: {
@@ -2185,7 +2204,9 @@ function renderDashboardCharts(data) {
                 datasets: [{
                     label: 'Devices',
                     data: data.os_distribution.values,
-                    backgroundColor: osColors.slice(0, data.os_distribution.labels.length),
+                    backgroundColor: gradient,
+                    borderColor: '#14b8a6',
+                    borderWidth: 1,
                     borderRadius: 6
                 }]
             },
@@ -2193,8 +2214,8 @@ function renderDashboardCharts(data) {
                 ...chartDefaults,
                 indexAxis: 'y',
                 scales: {
-                    x: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#1e293b' }, beginAtZero: true },
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                    x: { ticks: { color: '#64748b', stepSize: 1 }, grid: { color: '#f1f5f9' }, beginAtZero: true },
+                    y: { ticks: { color: '#64748b' }, grid: { display: false } }
                 },
                 plugins: { legend: { display: false } }
             }

@@ -2288,13 +2288,18 @@ tr:hover .device-type-icon-wrapper {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
     padding: 24px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
     transition: var(--transition-normal);
 }
 
+.kpi-card.kpi-blue { border-left: 4px solid #3b82f6; }
+.kpi-card.kpi-green { border-left: 4px solid #10b981; }
+.kpi-card.kpi-red { border-left: 4px solid #ef4444; }
+.kpi-card.kpi-purple { border-left: 4px solid #8b5cf6; }
+
 .kpi-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: 0 12px 20px -8px rgba(0,0,0,0.08);
+    transform: translateY(-4px);
 }
 
 .kpi-icon-wrap {
@@ -2339,16 +2344,16 @@ tr:hover .device-type-icon-wrapper {
 }
 
 .kpi-label {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.75px;
     color: var(--color-text-muted);
     margin-bottom: 4px;
 }
 
 .kpi-val {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 800;
     letter-spacing: -0.75px;
     color: var(--gray-900);
@@ -2373,10 +2378,16 @@ tr:hover .device-type-icon-wrapper {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
     padding: 24px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
     display: flex;
     flex-direction: column;
     gap: 16px;
+    transition: var(--transition-normal);
+}
+
+.chart-card:hover {
+    box-shadow: 0 10px 20px -8px rgba(0,0,0,0.06);
+    transform: translateY(-2px);
 }
 
 .chart-card-header {
