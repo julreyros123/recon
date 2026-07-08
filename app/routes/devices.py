@@ -280,7 +280,7 @@ def execute_background_scan(subnet: Optional[str] = None):
                     "source_mac": dev.get("mac", "unknown")
                 })
                 
-                detected_os = run_os_detection(ip)
+                detected_os = None
 
                 cursor.execute("""
                     INSERT INTO devices (ip, mac, hostname, vendor, status, open_ports, os_type,
