@@ -775,7 +775,7 @@ async function handleLoginSubmit(event) {
 
         authToken = data.access_token;
         currentUsername = data.username;
-        currentRole = data.role;
+        currentRole = data.role === 'user' ? 'Staff' : data.role;
         currentFullName = data.full_name || data.username;
 
         sessionStorage.setItem("authToken", authToken);
@@ -864,7 +864,7 @@ async function submitPin() {
 function applyRoleAccessControl() {
     const isSuperAdmin = currentRole === 'super_admin';
     const isOperator = currentRole === 'operator';
-    const isUser = currentRole === 'user';
+    const isUser = currentRole === 'user' || currentRole === 'Staff';
 
     const show = (id, visible) => {
         const el = document.getElementById(id);
