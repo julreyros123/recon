@@ -23,9 +23,9 @@ SNMP_TIMEOUT  = 2   # seconds per request
 SNMP_RETRIES  = 0   # no retries — fast scan mode
 
 try:
-    from pysnmp.hlapi import (
-        getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-        ContextData, ObjectType, ObjectIdentity
+    from pysnmp.hlapi import (  # type: ignore[import-untyped]
+        getCmd, SnmpEngine, CommunityData, UdpTransportTarget,  # type: ignore[attr-defined]
+        ContextData, ObjectType, ObjectIdentity  # type: ignore[attr-defined]
     )
     PYSNMP_AVAILABLE = True
 except ImportError:

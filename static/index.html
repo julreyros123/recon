@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons via CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=9">
+    <script src="/static/js/lucide.min.js"></script>
+    <!-- Chart.js -->
+    <script src="/static/js/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=13">
 </head>
 
 <body>
@@ -229,11 +229,42 @@
             <!-- 1. Devices Tab -->
             <section id="tab-devices" class="tab-pane active">
                 <div class="card table-card">
-                    <div class="table-header">
+                    <div class="table-header" style="flex-wrap: nowrap; gap: 8px;">
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-devices"
                                 placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="filterDevices()">
+                        </div>
+                        <div class="devices-filter-group" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                            <select id="device-trust-filter" class="filter-select" onchange="filterDevices()">
+                                <option value="">All Trust Levels</option>
+                                <option value="Trusted">Trusted</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Blocked">Blocked</option>
+                                <option value="Unknown">Unknown</option>
+                            </select>
+                            <select id="device-type-filter" class="filter-select" onchange="filterDevices()">
+                                <option value="">All Device Types</option>
+                                <option value="generic">Generic</option>
+                                <option value="workstation">Workstation</option>
+                                <option value="server">Server</option>
+                                <option value="router">Router</option>
+                                <option value="printer">Printer</option>
+                                <option value="smart-tv">Smart TV</option>
+                                <option value="mobile">Mobile</option>
+                            </select>
+                            <select id="device-dept-filter" class="filter-select" onchange="filterDevices()">
+                                <option value="">All Departments</option>
+                                <option value="None">None</option>
+                                <option value="IT">IT</option>
+                                <option value="HR">HR</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                            <button class="btn btn-secondary btn-export" id="btn-export-devices" onclick="exportDevicesCSV()">
+                                <i data-lucide="download"></i>
+                                <span>Export CSV</span>
+                            </button>
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -241,14 +272,20 @@
                             <thead>
                                 <tr>
                                     <th class="col-type">Type</th>
-                                    <th>Hostname / Owner</th>
-                                    <th>IP Address</th>
-                                    <th>MAC Address</th>
-                                    <th>Vendor</th>
-                                    <th>Trust Level</th>
-                                    <th>Patch Status</th>
+                                    <th onclick="toggleDeviceSort('hostname')" style="cursor: pointer; user-select: none;">
+                                        Hostname / Owner <span id="sort-icon-hostname" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th onclick="toggleDeviceSort('ip')" style="cursor: pointer; user-select: none;">
+                                        Network Address <span id="sort-icon-ip" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th onclick="toggleDeviceSort('vendor')" style="cursor: pointer; user-select: none;">
+                                        Vendor <span id="sort-icon-vendor" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th>Security State</th>
                                     <th>Open Ports</th>
-                                    <th>Last Seen</th>
+                                    <th onclick="toggleDeviceSort('last_seen')" style="cursor: pointer; user-select: none;">
+                                        Last Seen <span id="sort-icon-last_seen" style="color: var(--color-text-light);">↕</span>
+                                    </th>
                                     <th class="actions-col">Actions</th>
                                 </tr>
                             </thead>
@@ -1031,8 +1068,52 @@
         </div>
     </div>
 
+    <!-- Floating Action Button (FAB) for Policies -->
+    <button class="policy-fab" onclick="openModal('modal-policy')" title="View Security Policies">
+        <i data-lucide="shield-check"></i>
+    </button>
+
+    <!-- Policy Modal -->
+    <div class="modal-overlay" id="modal-policy">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Company Security Policies</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-policy')">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px; overflow-y: auto;">
+                <div class="policy-section-title">1. Device Authorization Policy (Default-Block)</div>
+                <ul class="policy-list">
+                    <li>All network devices must be registered and authorized by IT personnel.</li>
+                    <li>Unknown devices are isolated by default (<code>is_trusted = 0</code>) until explicitly approved.</li>
+                    <li>Devices flagged with active threats or suspicious software are immediately isolated.</li>
+                </ul>
+
+                <div class="policy-section-title">2. Identity &amp; Least Privilege Access Control</div>
+                <ul class="policy-list">
+                    <li>Access is strictly governed by Role-Based Access Control (RBAC): Super Admin, IT Admin, and Staff.</li>
+                    <li>Staff members are restricted to monitoring only assets registered in their name.</li>
+                    <li>Accounts are automatically locked out for 15 minutes after 5 consecutive failed login attempts.</li>
+                </ul>
+
+                <div class="policy-section-title">3. Multi-Factor Authentication (2FA) for Admins</div>
+                <ul class="policy-list">
+                    <li>Super Admin actions require a secondary 6-digit security PIN verification for containment actions, user changes, and settings modifications.</li>
+                </ul>
+
+                <div class="policy-section-title">4. Immutable Security Audit Trail</div>
+                <ul class="policy-list">
+                    <li>Every administrative operation is cryptographically tracked in the audit logs.</li>
+                    <li>Logs are strictly read-only and immutable for forensic validation.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-policy')">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+
     <!-- App Script -->
-    <script src="/static/js/app.js?v=4"></script>
+    <script src="/static/js/app.js?v=7"></script>
 </body>
 
 </html>

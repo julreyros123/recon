@@ -7,3 +7,8 @@ bcrypt
 psutil
 pysnmp
 httpx
+cryptography
+mysql-connector-python
+slowapi
+bleach
+python-dotenv

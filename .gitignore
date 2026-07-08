@@ -1,5 +1,7 @@
 .env
+.session_key
 venv/
 __pycache__/
 *.db
 *.pyc
+scratch/

@@ -30,7 +30,7 @@
     --color-inactive-bg: #f3f4f6;
 
     /* Layout & Shadow Tokens */
-    --sidebar-width: 260px;
+    --sidebar-width: 230px;
     --border-radius-lg: 12px;
     --border-radius-md: 8px;
     --border-radius-sm: 6px;
@@ -166,11 +166,11 @@ body {
 /* Main Content Area */
 .main-content {
     flex-grow: 1;
-    padding: 40px 48px;
+    padding: 20px 24px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
 }
 
 /* Header Styling */
@@ -196,6 +196,16 @@ body {
 .header-actions {
     display: flex;
     gap: 12px;
+}
+
+.header-actions .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.header-actions .btn i {
+    width: 14px;
+    height: 14px;
 }
 
 /* Custom Buttons */
@@ -377,23 +387,26 @@ body {
 
 .search-box {
     position: relative;
-    max-width: 400px;
+    max-width: 220px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 160px;
 }
 
 .search-icon {
     position: absolute;
-    left: 14px;
+    left: 11px;
     top: 50%;
     transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
     color: var(--color-text-light);
 }
 
 .search-box input {
     width: 100%;
-    padding: 10px 14px 10px 42px;
-    font-size: 14px;
+    padding: 7px 12px 7px 34px;
+    font-size: 13px;
     border-radius: var(--border-radius-md);
     border: 1px solid var(--color-border);
     outline: none;
@@ -422,7 +435,7 @@ body {
     background-color: var(--gray-50);
     color: var(--color-text-muted);
     font-weight: 600;
-    padding: 14px 24px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--color-border);
     text-transform: uppercase;
     font-size: 11px;
@@ -430,7 +443,7 @@ body {
 }
 
 .data-table td {
-    padding: 16px 24px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--color-border);
     color: var(--gray-900);
 }
@@ -888,7 +901,7 @@ body {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-md);
     padding: 0 12px;
-    width: 220px;
+    width: 190px;
     box-shadow: var(--shadow-sm);
     transition: var(--transition-fast);
 }
@@ -909,11 +922,11 @@ body {
     border: none;
     background: none;
     outline: none;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     width: 100%;
     color: var(--color-text-main);
-    padding: 10px 0;
+    padding: 7px 0;
 }
 
 /* Device OS Type Icons */
@@ -2408,8 +2421,8 @@ tr:hover .device-type-icon-wrapper {
 }
 
 .filter-select {
-    padding: 9px 14px;
-    font-size: 13px;
+    padding: 7px 12px;
+    font-size: 12px;
     font-weight: 500;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-md);
@@ -2425,8 +2438,8 @@ tr:hover .device-type-icon-wrapper {
 }
 
 .btn-export {
-    padding: 9px 14px;
-    font-size: 13px;
+    padding: 7px 12px;
+    font-size: 12px;
     white-space: nowrap;
 }
 
@@ -2699,7 +2712,7 @@ tr:hover .device-type-icon-wrapper {
 
 /* 1. Trusted PCs Sidebar */
 .trusted-sidebar {
-    width: 220px;
+    width: 200px;
     background-color: var(--color-bg-sidebar);
     border-left: 1px solid var(--color-border);
     display: flex;
@@ -3018,4 +3031,192 @@ tr:hover .device-type-icon-wrapper {
 
 .full-page-alerts-list .alert-threat-card {
     padding: 20px 24px;
+}
+
+/* Floating Action Button (FAB) for Policy */
+.policy-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #0f172a;
+    color: #ffffff;
+    border: none;
+    outline: none;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    z-index: 1100;
+}
+
+.policy-fab:hover {
+    background-color: #020617;
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.45);
+}
+
+.policy-fab i {
+    width: 24px;
+    height: 24px;
+}
+
+.policy-section-title {
+    font-weight: 600;
+    margin: 16px 0 8px 0;
+    color: #1e293b;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+}
+
+.policy-list {
+    margin: 8px 0 16px 20px;
+    list-style-type: disc;
+}
+
+.policy-list li {
+    margin-bottom: 6px;
+    line-height: 1.5;
+    color: #475569;
+}
+
+/* Actions Dropdown System */
+.actions-col {
+    position: relative;
+    text-align: right;
+}
+
+.dropdown-actions {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-dropdown-trigger {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm, 6px);
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+tbody tr:hover .btn-dropdown-trigger,
+.dropdown-actions.active .btn-dropdown-trigger {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-dropdown-trigger:hover {
+    background-color: var(--gray-100);
+    border-color: var(--gray-300);
+    color: var(--gray-900);
+}
+
+.btn-dropdown-trigger i {
+    width: 16px;
+    height: 16px;
+}
+
+.dropdown-menu-content {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background-color: #ffffff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md, 8px);
+    box-shadow: var(--shadow-lg);
+    display: none;
+    flex-direction: column;
+    padding: 6px;
+    min-width: 140px;
+    z-index: 100;
+}
+
+/* Show on hover */
+.dropdown-actions:hover .dropdown-menu-content {
+    display: flex;
+}
+
+/* Also show if active class is added (for clicks) */
+.dropdown-actions.active .dropdown-menu-content {
+    display: flex;
+}
+
+.dropdown-menu-content button {
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--gray-700);
+    cursor: pointer;
+    border-radius: var(--border-radius-sm, 6px);
+    transition: background-color 0.15s ease, color 0.15s ease;
+    width: 100%;
+}
+
+.dropdown-menu-content button:hover {
+    background-color: var(--gray-100);
+    color: var(--gray-900);
+}
+
+/* Specialized styles for actions inside the dropdown */
+.dropdown-menu-content .btn-trust {
+    color: #2563eb;
+    border: none !important;
+    background: none !important;
+    padding: 8px 12px !important;
+    font-weight: 500;
+}
+
+.dropdown-menu-content .btn-trust:hover {
+    background-color: #eff6ff !important;
+}
+
+.dropdown-menu-content .btn-trust.trusted {
+    color: #10b981;
+}
+
+.dropdown-menu-content .btn-trust.trusted:hover {
+    background-color: #ecfdf5 !important;
+}
+
+.dropdown-menu-content .btn-scan-ports {
+    color: var(--gray-700);
+    background: none !important;
+    border: none !important;
+}
+
+.dropdown-menu-content .btn-scan-ports:hover {
+    background-color: var(--gray-100) !important;
+}
+
+.dropdown-menu-content .btn-edit-text {
+    color: var(--gray-700);
+    background: none !important;
+    border: none !important;
+}
+
+.dropdown-menu-content .btn-edit-text:hover {
+    background-color: var(--gray-100) !important;
+}
+
+.dropdown-menu-content .btn-danger-text {
+    color: #ef4444;
+}
+
+.dropdown-menu-content .btn-danger-text:hover {
+    background-color: #fef2f2;
 }

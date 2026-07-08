@@ -89,7 +89,7 @@ def is_account_locked(user_row) -> bool:
 def increment_login_attempts(conn, user_id: int) -> int:
     """Increments failed attempts counter. Locks account after MAX_LOGIN_ATTEMPTS."""
     cursor = conn.cursor()
-    cursor.execute("SELECT login_attempts FROM users WHERE id = %s", (user_id,))
+    cursor.execute("SELECT login_attempts FROM users WHERE id = ?", (user_id,))
     row = cursor.fetchone()
     attempts = (row["login_attempts"] or 0) + 1 if row else 1
 
@@ -97,11 +97,11 @@ def increment_login_attempts(conn, user_id: int) -> int:
         lock_until = (datetime.datetime.now(datetime.timezone.utc) +
                       datetime.timedelta(minutes=LOCKOUT_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
-            "UPDATE users SET login_attempts = %s, locked_until = %s WHERE id = %s",
+            "UPDATE users SET login_attempts = ?, locked_until = ? WHERE id = ?",
             (attempts, lock_until, user_id)
         )
     else:
-        cursor.execute("UPDATE users SET login_attempts = %s WHERE id = %s", (attempts, user_id))
+        cursor.execute("UPDATE users SET login_attempts = ? WHERE id = ?", (attempts, user_id))
 
     conn.commit()
     return attempts
@@ -111,7 +111,7 @@ def reset_login_attempts(conn, user_id: int):
     cursor = conn.cursor()
     now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
-        "UPDATE users SET login_attempts = 0, locked_until = NULL, last_login = %s WHERE id = %s",
+        "UPDATE users SET login_attempts = 0, locked_until = NULL, last_login = ? WHERE id = ?",
         (now_str, user_id)
     )
     conn.commit()

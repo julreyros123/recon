@@ -1,7 +1,17 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.background import BackgroundScheduler
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from app.database.database import init_db
 from app.routes import devices, users, reports, audit, workstations, dashboard
 from app.routes.employees import router as employees_router
@@ -15,6 +25,9 @@ from app.scanner.snmp_scan import fetch_snmp_telemetry
 from app.routes.workstations import process_telemetry_report, TelemetryReport
 from app.scanner.network_sniffer import sniffer
 
+# ── Rate Limiter ──────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+
 def poll_agentless_telemetry():
     """Background job that queries SNMP for all active devices and ingests their telemetry."""
     print("[Agentless Polling] Starting background SNMP polling cycle...")
@@ -23,7 +36,7 @@ def poll_agentless_telemetry():
         cursor = conn.cursor()
         cursor.execute("SELECT ip FROM devices WHERE status = 'active'")
         active_devices = [r["ip"] for r in cursor.fetchall()]
-        
+
         for ip in active_devices:
             telemetry_data = fetch_snmp_telemetry(ip)
             if telemetry_data:
@@ -49,10 +62,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(execute_background_scan, 'interval', minutes=15)
     scheduler.add_job(poll_agentless_telemetry, 'interval', seconds=60)
     scheduler.start()
-    
+
     # Start the network sniffer
     sniffer.start()
-    
+
     yield
     # Shutdown the scheduler and sniffer
     scheduler.shutdown()
@@ -64,6 +77,40 @@ app = FastAPI(
     description="A FastAPI backend for Recon NDS (Network Device Scanner), detecting active devices and logging scan reports.",
     version="2.1.0"
 )
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── CORS Policy ───────────────────────────────────────────────────────────────
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Agent-Key"],
+)
+
+# ── Security Headers Middleware ───────────────────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    return response
 
 # Mount the static directory to serve CSS and JS
 app.mount("/static", StaticFiles(directory="static"), name="static")

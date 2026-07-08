@@ -16,6 +16,8 @@ let activeWorkstationId = null;
 let activeDetailsTab = 'processes';
 let workstationsPollingInterval = null;
 let activeTab = 'devices';
+let deviceSortField = 'last_seen';
+let deviceSortOrder = 'desc';
 let isScanning = false;
 let authToken = sessionStorage.getItem("authToken") || null;
 let currentUsername = sessionStorage.getItem("currentUsername") || null;
@@ -209,7 +211,8 @@ async function fetchDevices() {
         if (!response.ok) throw new Error("Failed to fetch devices");
         devicesState = await response.json();
 
-        renderDevices(devicesState);
+        updateSortIcons();
+        filterDevices();
         renderTrustedSidebar(devicesState);
         updateMetrics();
     } catch (error) {
@@ -324,7 +327,7 @@ function renderDevices(devices) {
     if (listToRender.length === 0) {
         listBody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state-row">
+                <td colspan="8" class="empty-state-row">
                     <i data-lucide="help-circle" class="empty-state-icon"></i>
                     <p class="empty-state-text">No devices found.</p>
                 </td>
@@ -425,7 +428,7 @@ function renderDevices(devices) {
                 : '';
 
             actionsCellHtml = `
-                <div class="actions-cell">
+                <div class="actions-overlay">
                     <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
                     <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
                     <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit</button>
@@ -447,11 +450,15 @@ function renderDevices(devices) {
                         ${ownerDeptHtml}
                     </div>
                 </td>
-                <td><code class="code-ip">${dev.ip}</code></td>
-                <td><code class="code-mac">${dev.mac || 'N/A'}</code></td>
+                <td>
+                    <div><code class="code-ip">${dev.ip}</code></div>
+                    <div><code class="code-mac" style="font-size: 11px; color: var(--color-text-muted);">${dev.mac || 'N/A'}</code></div>
+                </td>
                 <td>${dev.vendor || 'Unknown Brand'}</td>
-                <td>${trustLevelHtml}</td>
-                <td>${patchHtml}</td>
+                <td>
+                    <div style="margin-bottom: 4px;">${trustLevelHtml}</div>
+                    <div>${patchHtml}</div>
+                </td>
                 <td>${portsHtml}</td>
                 <td class="td-last-seen">${formattedDate}</td>
                 <td class="actions-col">${actionsCellHtml}</td>
@@ -756,7 +763,7 @@ async function handleLoginSubmit(event) {
         const response = await fetch("/api/users/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: usernameInput, password: passwordInput })
+            body: JSON.stringify({ username: usernameInput, password: btoa(passwordInput) })
         });
 
         if (!response.ok) {
@@ -1282,24 +1289,162 @@ function viewPorts(deviceBase64) {
     document.getElementById("modal-ports").classList.add("active");
 }
 
-// Local Search Filters inside Devices tab
+// Local Search Filters, Sorting, and Export inside Devices tab
 function filterDevices() {
-    const query = document.getElementById("search-devices").value.toLowerCase().trim();
-    if (!query) {
-        renderDevices(devicesState);
-        return;
-    }
+    const query = (document.getElementById("search-devices")?.value || "").toLowerCase().trim();
+    const trustFilter = document.getElementById("device-trust-filter")?.value || "";
+    const typeFilter = document.getElementById("device-type-filter")?.value || "";
+    const deptFilter = document.getElementById("device-dept-filter")?.value || "";
 
-    const filtered = devicesState.filter(dev => {
-        return (
+    let filtered = devicesState.filter(dev => {
+        // Query search
+        const matchQuery = !query ||
             (dev.ip && dev.ip.toLowerCase().includes(query)) ||
             (dev.hostname && dev.hostname.toLowerCase().includes(query)) ||
             (dev.mac && dev.mac.toLowerCase().includes(query)) ||
-            (dev.vendor && dev.vendor.toLowerCase().includes(query))
-        );
+            (dev.vendor && dev.vendor.toLowerCase().includes(query));
+
+        // Dropdown filters
+        const matchTrust = !trustFilter || dev.trust_level === trustFilter;
+        const matchType = !typeFilter || dev.os_type === typeFilter;
+        const matchDept = !deptFilter || dev.department === deptFilter;
+
+        return matchQuery && matchTrust && matchType && matchDept;
+    });
+
+    // Apply client-side sorting
+    filtered.sort((a, b) => {
+        let valA = a[deviceSortField];
+        let valB = b[deviceSortField];
+
+        if (deviceSortField === 'ip') {
+            // Natural IP sorting
+            const partsA = (valA || '').split('.').map(Number);
+            const partsB = (valB || '').split('.').map(Number);
+            for (let i = 0; i < 4; i++) {
+                const octetA = partsA[i] || 0;
+                const octetB = partsB[i] || 0;
+                if (octetA !== octetB) {
+                    return deviceSortOrder === 'asc' ? octetA - octetB : octetB - octetA;
+                }
+            }
+            return 0;
+        }
+
+        // Handle case insensitivity for strings
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        // Handle null values
+        if (valA === null || valA === undefined) valA = '';
+        if (valB === null || valB === undefined) valB = '';
+
+        if (valA < valB) return deviceSortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return deviceSortOrder === 'asc' ? 1 : -1;
+        return 0;
     });
 
     renderDevices(filtered);
+}
+
+function toggleDeviceSort(field) {
+    if (deviceSortField === field) {
+        deviceSortOrder = deviceSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        deviceSortField = field;
+        deviceSortOrder = 'asc';
+    }
+    updateSortIcons();
+    filterDevices();
+}
+
+function updateSortIcons() {
+    const fields = ['hostname', 'ip', 'vendor', 'last_seen'];
+    fields.forEach(f => {
+        const el = document.getElementById(`sort-icon-${f}`);
+        if (!el) return;
+        if (deviceSortField === f) {
+            el.innerText = deviceSortOrder === 'asc' ? ' ▲' : ' ▼';
+            el.style.color = 'var(--gray-900)';
+        } else {
+            el.innerText = ' ↕';
+            el.style.color = 'var(--color-text-light)';
+        }
+    });
+}
+
+function exportDevicesCSV() {
+    // Get currently filtered list of devices by applying the filter logic
+    const query = (document.getElementById("search-devices")?.value || "").toLowerCase().trim();
+    const trustFilter = document.getElementById("device-trust-filter")?.value || "";
+    const typeFilter = document.getElementById("device-type-filter")?.value || "";
+    const deptFilter = document.getElementById("device-dept-filter")?.value || "";
+
+    const filtered = devicesState.filter(dev => {
+        const matchQuery = !query ||
+            (dev.ip && dev.ip.toLowerCase().includes(query)) ||
+            (dev.hostname && dev.hostname.toLowerCase().includes(query)) ||
+            (dev.mac && dev.mac.toLowerCase().includes(query)) ||
+            (dev.vendor && dev.vendor.toLowerCase().includes(query));
+
+        const matchTrust = !trustFilter || dev.trust_level === trustFilter;
+        const matchType = !typeFilter || dev.os_type === typeFilter;
+        const matchDept = !deptFilter || dev.department === deptFilter;
+
+        return matchQuery && matchTrust && matchType && matchDept;
+    });
+
+    if (filtered.length === 0) {
+        showToast("No devices to export.");
+        return;
+    }
+
+    // Generate CSV content
+    const headers = [
+        "Hostname", "IP Address", "MAC Address", "Vendor", 
+        "Trust Level", "OS Type", "Current OS", "Owner", 
+        "Department", "Purpose", "Last Seen"
+    ];
+    
+    let csvRows = [headers.join(",")];
+    
+    filtered.forEach(dev => {
+        const row = [
+            dev.hostname || "Unknown",
+            dev.ip || "",
+            dev.mac || "",
+            dev.vendor || "Unknown",
+            dev.trust_level || "Unknown",
+            dev.os_type || "generic",
+            dev.current_os || "",
+            dev.owner_name || "None",
+            dev.department || "None",
+            dev.purpose || "",
+            dev.last_seen || ""
+        ].map(val => {
+            // Escape double quotes and wrap in quotes if contains comma
+            let formatted = String(val).replace(/"/g, '""');
+            if (formatted.includes(",") || formatted.includes("\n") || formatted.includes('"')) {
+                formatted = `"${formatted}"`;
+            }
+            return formatted;
+        });
+        csvRows.push(row.join(","));
+    });
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `recon_nds_devices_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+    
+    showToast("Devices inventory exported successfully.");
 }
 
 // Toast Notifications System Helper

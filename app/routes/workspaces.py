@@ -7,7 +7,8 @@ from app.routes.auth import RoleChecker, get_current_user
 
 router = APIRouter()
 
-# ── Request Models ────────────────────────────────────────────
+ALLOWED_WORKSPACE_FIELDS = {"name", "description", "location"}
+
 class WorkspaceCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -18,7 +19,6 @@ class WorkspaceUpdate(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
 
-# ── Helper ────────────────────────────────────────────────────
 def _workspace_with_devices(ws_row: dict, cursor) -> dict:
     """Attach device list to a workspace row."""
     result = dict(ws_row)
@@ -26,14 +26,12 @@ def _workspace_with_devices(ws_row: dict, cursor) -> dict:
         SELECT d.id, d.ip, d.hostname, d.mac, d.os_type, d.status, d.trust_level, wd.date_added
         FROM workspace_devices wd
         JOIN devices d ON wd.device_id = d.id
-        WHERE wd.workspace_id = %s
+        WHERE wd.workspace_id = ?
         ORDER BY d.hostname
     """, (result["id"],))
     result["devices"] = [dict(r) for r in cursor.fetchall()]
     result["device_count"] = len(result["devices"])
     return result
-
-# ── Endpoints ─────────────────────────────────────────────────
 
 @router.get("/")
 def list_workspaces(
@@ -43,7 +41,7 @@ def list_workspaces(
     """Returns all workspaces with their assigned devices."""
     cursor = conn.cursor()
     if current_user.get("role") == "user":
-        cursor.execute("SELECT department FROM employees WHERE user_id = (SELECT id FROM users WHERE username = %s)", (current_user["username"],))
+        cursor.execute("SELECT department FROM employees WHERE user_id = (SELECT id FROM users WHERE username = ?)", (current_user["username"],))
         emp_row = cursor.fetchone()
         if emp_row and emp_row["department"]:
             dept = emp_row["department"]
@@ -55,7 +53,7 @@ def list_workspaces(
             elif dept == "Finance":
                 search_term_alt = "Finance"
             cursor.execute(
-                "SELECT * FROM workspaces WHERE name LIKE %s OR name LIKE %s OR description LIKE %s ORDER BY name",
+                "SELECT * FROM workspaces WHERE name LIKE ? OR name LIKE ? OR description LIKE ? ORDER BY name",
                 (f"%{dept}%", f"%{search_term_alt}%", f"%{dept}%")
             )
         else:
@@ -73,7 +71,7 @@ def get_workspace(
 ):
     """Returns a single workspace with its devices."""
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM workspaces WHERE id = %s", (workspace_id,))
+    cursor.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,))
     row = cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -89,7 +87,7 @@ def create_workspace(
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "INSERT INTO workspaces (name, description, location, created_by) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO workspaces (name, description, location, created_by) VALUES (?, ?, ?, ?)",
             (ws.name, ws.description, ws.location, current_user["username"])
         )
         conn.commit()
@@ -103,11 +101,11 @@ def create_workspace(
             ip_address="127.0.0.1",
             details=f"Created workspace: '{ws.name}' at {ws.location or 'N/A'}"
         )
-        cursor.execute("SELECT * FROM workspaces WHERE id = %s", (new_id,))
+        cursor.execute("SELECT * FROM workspaces WHERE id = ?", (new_id,))
         return _workspace_with_devices(dict(cursor.fetchone()), cursor)
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=f"Workspace creation failed: {e}")
+        raise HTTPException(status_code=400, detail="Workspace creation failed")
 
 @router.put("/{workspace_id}")
 def update_workspace(
@@ -119,18 +117,34 @@ def update_workspace(
     """Update a workspace. Super Admin or Operator."""
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
         updates = data.model_dump(exclude_unset=True)
+        for key in list(updates.keys()):
+            if key not in ALLOWED_WORKSPACE_FIELDS:
+                del updates[key]
+
         if not updates:
             return _workspace_with_devices(dict(row), cursor)
 
-        set_parts = [f"{k} = %s" for k in updates.keys()]
-        params = list(updates.values()) + [workspace_id]
-        cursor.execute(f"UPDATE workspaces SET {', '.join(set_parts)} WHERE id = %s", params)
+        # Merge updates with existing database values
+        name = updates.get("name", row["name"])
+        description = updates.get("description", row["description"])
+        location = updates.get("location", row["location"])
+
+        cursor.execute(
+            """
+            UPDATE workspaces SET
+                name = ?,
+                description = ?,
+                location = ?
+            WHERE id = ?
+            """,
+            (name, description, location, workspace_id)
+        )
         conn.commit()
 
         log_audit_event(
@@ -141,13 +155,13 @@ def update_workspace(
             ip_address="127.0.0.1",
             details=f"Updated workspace '{row['name']}': {list(updates.keys())}"
         )
-        cursor.execute("SELECT * FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,))
         return _workspace_with_devices(dict(cursor.fetchone()), cursor)
     except Exception as e:
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Update failed: {e}")
+        raise HTTPException(status_code=500, detail="Update failed")
 
 @router.delete("/{workspace_id}")
 def delete_workspace(
@@ -158,12 +172,12 @@ def delete_workspace(
     """Delete a workspace. Super Admin only."""
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        cursor.execute("DELETE FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("DELETE FROM workspaces WHERE id = ?", (workspace_id,))
         conn.commit()
 
         log_audit_event(
@@ -179,7 +193,7 @@ def delete_workspace(
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
+        raise HTTPException(status_code=500, detail="Delete failed")
 
 @router.post("/{workspace_id}/add-device/{device_id}")
 def add_device_to_workspace(
@@ -191,18 +205,18 @@ def add_device_to_workspace(
     """Add a device to a workspace."""
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT name FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("SELECT name FROM workspaces WHERE id = ?", (workspace_id,))
         ws = cursor.fetchone()
         if not ws:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        cursor.execute("SELECT hostname, ip FROM devices WHERE id = %s", (device_id,))
+        cursor.execute("SELECT hostname, ip FROM devices WHERE id = ?", (device_id,))
         dev = cursor.fetchone()
         if not dev:
             raise HTTPException(status_code=404, detail="Device not found")
 
         cursor.execute(
-            "INSERT OR IGNORE INTO workspace_devices (workspace_id, device_id, added_by) VALUES (%s, %s, %s)",
+            "INSERT OR IGNORE INTO workspace_devices (workspace_id, device_id, added_by) VALUES (?, ?, ?)",
             (workspace_id, device_id, current_user["username"])
         )
         conn.commit()
@@ -220,7 +234,7 @@ def add_device_to_workspace(
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Failed to add device: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add device")
 
 @router.delete("/{workspace_id}/remove-device/{device_id}")
 def remove_device_from_workspace(
@@ -232,13 +246,13 @@ def remove_device_from_workspace(
     """Remove a device from a workspace."""
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM workspaces WHERE id = %s", (workspace_id,))
+        cursor.execute("SELECT name FROM workspaces WHERE id = ?", (workspace_id,))
         ws = cursor.fetchone()
         if not ws:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
         cursor.execute(
-            "DELETE FROM workspace_devices WHERE workspace_id = %s AND device_id = %s",
+            "DELETE FROM workspace_devices WHERE workspace_id = ? AND device_id = ?",
             (workspace_id, device_id)
         )
         conn.commit()
@@ -256,4 +270,4 @@ def remove_device_from_workspace(
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Failed to remove device: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove device")

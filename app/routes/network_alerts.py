@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import sqlite3
@@ -6,6 +6,7 @@ import datetime
 from app.database.database import get_db, log_audit_event
 from app.routes.auth import get_current_user, RoleChecker
 from app.scanner.network_sniffer import sniffer
+from app.utils.security import get_client_ip
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ def get_network_alerts(unresolved_only: bool = True, skip: int = 0, limit: int =
     if filters:
         query += " WHERE " + " AND ".join(filters)
         
-    query += " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+    query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
     params.extend([limit, skip])
     
     cursor.execute(query, params)
@@ -35,11 +36,17 @@ def get_network_alerts(unresolved_only: bool = True, skip: int = 0, limit: int =
     return [dict(row) for row in rows]
 
 @router.post("/{alert_id}/resolve")
-def resolve_network_alert(alert_id: int, resolution: AlertResolve, current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+def resolve_network_alert(
+    alert_id: int,
+    resolution: AlertResolve,
+    request: Request,
+    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    db: sqlite3.Connection = Depends(get_db)
+):
     """Resolves an open network threat alert."""
     cursor = db.cursor()
     
-    cursor.execute("SELECT * FROM network_alerts WHERE id = %s", (alert_id,))
+    cursor.execute("SELECT * FROM network_alerts WHERE id = ?", (alert_id,))
     row = cursor.fetchone()
     
     if not row:
@@ -51,28 +58,25 @@ def resolve_network_alert(alert_id: int, resolution: AlertResolve, current_user:
     try:
         cursor.execute(
             """UPDATE network_alerts 
-               SET status = 'Resolved', resolved_by = %s, resolution_notes = %s, date_resolved = %s 
-               WHERE id = %s""",
+               SET status = 'Resolved', resolved_by = ?, resolution_notes = ?, date_resolved = ? 
+               WHERE id = ?""",
             (username, resolution.resolution_notes, now_str, alert_id)
         )
         db.commit()
         
-        # Log to audit trail
         log_audit_event(
             username=username,
             role=current_user["role"],
             action="POLICY",
             target=row["source_ip"],
-            ip_address="127.0.0.1",
+            ip_address=get_client_ip(request),
             details=f"Resolved network alert '{row['title']}'. Notes: {resolution.resolution_notes}"
         )
         
         return {"status": "success", "alert_id": alert_id, "resolved_by": username, "date_resolved": now_str}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to resolve alert: {e}")
-
-# --- SIMULATION ENDPOINTS ---
+        raise HTTPException(status_code=500, detail="Failed to resolve alert")
 
 @router.post("/simulate/arp-spoof")
 def simulate_arp_spoof(current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):

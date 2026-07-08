@@ -1,12 +1,13 @@
 import threading
 import time
+import datetime
 import sqlite3
 from typing import Optional
 from app.database.database import get_db_connection
 from app.routes.events import push_event
 
 try:
-    from scapy.all import sniff, ARP, DHCP, BOOTP, Ether, IP
+    from scapy.all import sniff, ARP, DHCP, BOOTP, Ether, IP  # type: ignore[import-untyped]
     SCAPY_AVAILABLE = True
 except ImportError:
     SCAPY_AVAILABLE = False
@@ -90,12 +91,12 @@ class NetworkSniffer:
         try:
             cursor = conn.cursor()
             
-            # Prevent spamming the same alert
+            five_min_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute("""
                 SELECT id FROM network_alerts 
                 WHERE alert_type = ? AND source_ip = ? AND source_mac = ? AND status = 'Unresolved'
-                AND timestamp > datetime('now', '-5 minutes')
-            """, (alert_type, source_ip, source_mac))
+                AND timestamp > ?
+            """, (alert_type, source_ip, source_mac, five_min_ago))
             if cursor.fetchone():
                 return
                 
@@ -105,7 +106,6 @@ class NetworkSniffer:
             """, (alert_type, severity, title, description, source_ip, source_mac))
             conn.commit()
             
-            # Send SSE event for real-time dashboard updates
             push_event("network_alert", {
                 "alert_type": alert_type,
                 "severity": severity,
@@ -115,7 +115,6 @@ class NetworkSniffer:
                 "source_mac": source_mac
             })
             
-            # Log to audit
             cursor.execute(
                 "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES (?, ?, ?, ?, ?, ?)",
                 ("system", "system", "SECURITY_ALERT", source_ip, "127.0.0.1", f"[{severity}] {title}: {description}")

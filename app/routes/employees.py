@@ -8,7 +8,8 @@ from app.utils.encryption import encrypt_pii, decrypt_pii
 
 router = APIRouter()
 
-# ── Request / Response Models ─────────────────────────────────
+ALLOWED_EMPLOYEE_FIELDS = {"full_name", "position", "department", "email", "phone", "date_hired", "user_id", "is_active"}
+
 class EmployeeCreate(BaseModel):
     employee_id: Optional[str] = None
     full_name: str
@@ -17,7 +18,7 @@ class EmployeeCreate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     date_hired: Optional[str] = None
-    user_id: Optional[int] = None   # link to a system user account
+    user_id: Optional[int] = None
     is_active: bool = True
 
 class EmployeeUpdate(BaseModel):
@@ -30,12 +31,11 @@ class EmployeeUpdate(BaseModel):
     user_id: Optional[int] = None
     is_active: Optional[bool] = None
 
-# ── Helper ────────────────────────────────────────────────────
 def _row_with_user(row: dict, cursor) -> dict:
     """Attach linked username to an employee row if user_id is set."""
     result = dict(row)
     if result.get("user_id"):
-        cursor.execute("SELECT username, role FROM users WHERE id = %s", (result["user_id"],))
+        cursor.execute("SELECT username, role FROM users WHERE id = ?", (result["user_id"],))
         u = cursor.fetchone()
         result["linked_username"] = u["username"] if u else None
         result["linked_role"] = u["role"] if u else None
@@ -48,8 +48,6 @@ def _row_with_user(row: dict, cursor) -> dict:
             result[field] = decrypt_pii(result[field])
         
     return result
-
-# ── Endpoints ─────────────────────────────────────────────────
 
 @router.get("/")
 def list_employees(
@@ -70,7 +68,7 @@ def get_employee(
 ):
     """Returns a single employee profile by internal ID."""
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM employees WHERE id = %s", (employee_id_pk,))
+    cursor.execute("SELECT * FROM employees WHERE id = ?", (employee_id_pk,))
     row = cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -87,7 +85,7 @@ def create_employee(
     try:
         cursor.execute(
             """INSERT INTO employees (user_id, employee_id, full_name, position, department, email, phone, date_hired, is_active, created_by)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (emp.user_id, encrypt_pii(emp.employee_id), encrypt_pii(emp.full_name), encrypt_pii(emp.position), encrypt_pii(emp.department),
              encrypt_pii(emp.email), encrypt_pii(emp.phone), emp.date_hired, int(emp.is_active), current_user["username"])
         )
@@ -103,11 +101,11 @@ def create_employee(
             details=f"Created HR employee profile: {emp.full_name} ({emp.department or 'N/A'}) | ID: {emp.employee_id}"
         )
 
-        cursor.execute("SELECT * FROM employees WHERE id = %s", (new_id,))
+        cursor.execute("SELECT * FROM employees WHERE id = ?", (new_id,))
         return _row_with_user(dict(cursor.fetchone()), cursor)
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=f"Employee creation failed: {e}")
+        raise HTTPException(status_code=400, detail="Employee creation failed")
 
 @router.put("/{employee_id_pk}")
 def update_employee(
@@ -119,7 +117,7 @@ def update_employee(
     """Update an employee profile. Super Admin only."""
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM employees WHERE id = %s", (employee_id_pk,))
+        cursor.execute("SELECT * FROM employees WHERE id = ?", (employee_id_pk,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Employee not found")
@@ -132,14 +130,21 @@ def update_employee(
             if field in updates and updates[field]:
                 updates[field] = encrypt_pii(updates[field])
 
+        for key in list(updates.keys()):
+            if key not in ALLOWED_EMPLOYEE_FIELDS:
+                del updates[key]
+
+        if not updates:
+            return _row_with_user(dict(row), cursor)
+
         set_parts = []
         params = []
         for k, v in updates.items():
-            set_parts.append(f"{k} = %s")
+            set_parts.append(f"{k} = ?")
             params.append(int(v) if isinstance(v, bool) else v)
         params.append(employee_id_pk)
 
-        cursor.execute(f"UPDATE employees SET {', '.join(set_parts)} WHERE id = %s", params)
+        cursor.execute(f"UPDATE employees SET {', '.join(set_parts)} WHERE id = ?", params)
         conn.commit()
 
         log_audit_event(
@@ -150,13 +155,13 @@ def update_employee(
             ip_address="127.0.0.1",
             details=f"Updated employee {row['full_name']}: {list(updates.keys())}"
         )
-        cursor.execute("SELECT * FROM employees WHERE id = %s", (employee_id_pk,))
+        cursor.execute("SELECT * FROM employees WHERE id = ?", (employee_id_pk,))
         return _row_with_user(dict(cursor.fetchone()), cursor)
     except Exception as e:
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Update failed: {e}")
+        raise HTTPException(status_code=500, detail="Update failed")
 
 @router.delete("/{employee_id_pk}")
 def delete_employee(
@@ -167,12 +172,12 @@ def delete_employee(
     """Delete an employee profile. Super Admin only."""
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM employees WHERE id = %s", (employee_id_pk,))
+        cursor.execute("SELECT * FROM employees WHERE id = ?", (employee_id_pk,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        cursor.execute("DELETE FROM employees WHERE id = %s", (employee_id_pk,))
+        cursor.execute("DELETE FROM employees WHERE id = ?", (employee_id_pk,))
         conn.commit()
 
         log_audit_event(
@@ -188,7 +193,7 @@ def delete_employee(
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
+        raise HTTPException(status_code=500, detail="Delete failed")
 
 @router.post("/{employee_id_pk}/assign-device/{device_id}")
 def assign_device_to_employee(
@@ -200,19 +205,18 @@ def assign_device_to_employee(
     """Assign a network device (PC/workstation) to an employee as their primary device."""
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM employees WHERE id = %s", (employee_id_pk,))
+        cursor.execute("SELECT * FROM employees WHERE id = ?", (employee_id_pk,))
         emp = cursor.fetchone()
         if not emp:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        cursor.execute("SELECT hostname, ip, mac FROM devices WHERE id = %s", (device_id,))
+        cursor.execute("SELECT hostname, ip, mac FROM devices WHERE id = ?", (device_id,))
         dev = cursor.fetchone()
         if not dev:
             raise HTTPException(status_code=404, detail="Device not found")
 
-        # Update device owner_name and department to match employee
         cursor.execute(
-            "UPDATE devices SET owner_name = %s, department = %s WHERE id = %s",
+            "UPDATE devices SET owner_name = ?, department = ? WHERE id = ?",
             (emp["full_name"], emp["department"], device_id)
         )
         conn.commit()
@@ -235,4 +239,4 @@ def assign_device_to_employee(
         conn.rollback()
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail=f"Assignment failed: {e}")
+        raise HTTPException(status_code=500, detail="Assignment failed")

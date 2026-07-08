@@ -64,13 +64,13 @@ def get_device_cves(
     cursor = db.cursor()
 
     # Confirm device exists
-    cursor.execute("SELECT id, hostname, ip, vendor, firmware_version FROM devices WHERE id = %s", (device_id,))
+    cursor.execute("SELECT id, hostname, ip, vendor, firmware_version FROM devices WHERE id = ?", (device_id,))
     device = cursor.fetchone()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
 
     cursor.execute(
-        "SELECT * FROM device_cves WHERE device_id = %s ORDER BY cvss_score DESC",
+        "SELECT * FROM device_cves WHERE device_id = ? ORDER BY cvss_score DESC",
         (device_id,)
     )
     cves = [dict(r) for r in cursor.fetchall()]
@@ -98,7 +98,7 @@ def trigger_cve_check(
     Runs in background to avoid blocking the request.
     """
     cursor = db.cursor()
-    cursor.execute("SELECT id, hostname, ip, vendor, firmware_version FROM devices WHERE id = %s", (device_id,))
+    cursor.execute("SELECT id, hostname, ip, vendor, firmware_version FROM devices WHERE id = ?", (device_id,))
     device = cursor.fetchone()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")

@@ -16,6 +16,9 @@ from typing import List, Dict, Any
 # Target Server URL
 SERVER_URL = "http://localhost:8000/api/workstations/report"
 
+# Agent API Key — must match AGENT_API_KEY in server .env
+AGENT_API_KEY = os.environ.get("AGENT_API_KEY", "539d0d66136736d57ee174dcfe020cd8ce1d7b77dd0ec7f821faeb79952230d6")
+
 # Simulation Mode Settings
 # 1 = Normal, 2 = Cryptominer CPU Spike, 3 = Mimikatz, 4 = Reverse Shell, 5 = Hak5 Rubber Ducky USB, 6 = Unauthorized USB Storage, 7 = RDP Admin Login
 current_mode = 1
@@ -350,7 +353,10 @@ def telemetry_loop():
             req = urllib.request.Request(
                 SERVER_URL,
                 data=json.dumps(payload).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Agent-Key': AGENT_API_KEY,
+                },
                 method='POST'
             )
             

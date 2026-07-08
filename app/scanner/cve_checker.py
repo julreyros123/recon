@@ -14,7 +14,6 @@ Usage:
 import hashlib
 import json
 import time
-import sqlite3
 import datetime
 from typing import List, Dict, Any, Optional
 
@@ -48,7 +47,7 @@ def _build_query_key(vendor: str, firmware_version: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _get_cached(conn: sqlite3.Connection, query_key: str) -> Optional[List[Dict]]:
+def _get_cached(conn, query_key: str) -> Optional[List[Dict]]:
     """Returns cached CVE data if fresh (< 24h), else None."""
     cursor = conn.cursor()
     cursor.execute("SELECT cve_data, fetched_at FROM cve_cache WHERE query_key = ?", (query_key,))
@@ -67,7 +66,7 @@ def _get_cached(conn: sqlite3.Connection, query_key: str) -> Optional[List[Dict]
     return None
 
 
-def _save_cache(conn: sqlite3.Connection, query_key: str, cves: List[Dict]):
+def _save_cache(conn, query_key: str, cves: List[Dict]):
     """Upserts CVE results into the cve_cache table."""
     cursor = conn.cursor()
     now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -100,7 +99,7 @@ def _fetch_nvd(keyword: str, api_key: Optional[str] = None) -> List[Dict]:
     try:
         response = httpx.get(NVD_API_BASE, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
         if response.status_code == 429:
-            print("[CVE] NVD rate limit hit — backing off 35 seconds")
+            print("[CVE] NVD rate limit hit -- backing off 35 seconds")
             time.sleep(35)
             response = httpx.get(NVD_API_BASE, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
@@ -114,7 +113,6 @@ def _fetch_nvd(keyword: str, api_key: Optional[str] = None) -> List[Dict]:
         cve_item = vuln.get("cve", {})
         cve_id = cve_item.get("id", "")
 
-        # Extract CVSS score (prefer v3.1, fallback to v3.0, then v2)
         cvss_score = None
         severity = "Unknown"
         metrics = cve_item.get("metrics", {})
@@ -126,14 +124,13 @@ def _fetch_nvd(keyword: str, api_key: Optional[str] = None) -> List[Dict]:
                 severity = cvss_data.get("baseSeverity") or _cvss_to_severity(cvss_score)
                 break
 
-        # Description (English preferred)
         description = ""
         for desc in cve_item.get("descriptions", []):
             if desc.get("lang") == "en":
                 description = desc.get("value", "")[:500]
                 break
 
-        published_date = cve_item.get("published", "")[:10]  # yyyy-mm-dd
+        published_date = cve_item.get("published", "")[:10]
 
         cves.append({
             "cve_id": cve_id,
@@ -147,7 +144,7 @@ def _fetch_nvd(keyword: str, api_key: Optional[str] = None) -> List[Dict]:
 
 
 def check_cves(
-    conn: sqlite3.Connection,
+    conn,
     device_id: int,
     vendor: str,
     firmware_version: Optional[str] = None,
@@ -159,7 +156,6 @@ def check_cves(
 
     Returns list of CVE dicts.
     """
-    # Build search keyword: vendor + firmware version for precision
     keyword_parts = [vendor.strip()] if vendor.strip() else []
     if firmware_version and firmware_version.strip():
         keyword_parts.append(firmware_version.strip())
@@ -170,7 +166,6 @@ def check_cves(
 
     query_key = _build_query_key(vendor, firmware_version or "")
 
-    # Try cache first
     cached = _get_cached(conn, query_key)
     if cached is not None:
         print(f"[CVE] Cache hit for '{keyword}' ({len(cached)} CVEs)")
@@ -183,7 +178,6 @@ def check_cves(
     if not cves:
         return []
 
-    # Persist to device_cves table (replace existing entries for this device)
     cursor = conn.cursor()
     now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("DELETE FROM device_cves WHERE device_id = ?", (device_id,))

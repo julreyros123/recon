@@ -70,7 +70,7 @@ def get_dashboard_stats(
         cursor.execute("""
             SELECT DATE(timestamp) as scan_date, COUNT(*) as count
             FROM reports
-            WHERE timestamp >= DATE('now', '-7 days')
+            WHERE timestamp >= datetime('now', '-7 days')
             GROUP BY scan_date
             ORDER BY scan_date ASC
         """)
