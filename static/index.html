@@ -101,7 +101,7 @@
                 <div class="header-actions">
                     <div class="custom-subnet-container" id="custom-subnet-box">
                         <i data-lucide="network" class="subnet-icon"></i>
-                        <input type="text" id="custom-subnet-input" placeholder="Subnet range (optional)..."
+                        <input type="text" id="custom-subnet-input" autocomplete="off" name="custom-subnet" placeholder="Subnet range (optional)..."
                             title="e.g. 192.168.1.0/24 or 127.0.0.1">
                     </div>
                     <button class="btn btn-danger" id="btn-clear-devices" onclick="clearAllDevices()">
@@ -232,7 +232,7 @@
                     <div class="table-header" style="flex-wrap: nowrap; gap: 8px;">
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
-                            <input type="text" id="search-devices"
+                            <input type="text" id="search-devices" autocomplete="off" name="search-devices-query"
                                 placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="filterDevices()">
                         </div>
                         <div class="devices-filter-group" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
