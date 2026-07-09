@@ -334,7 +334,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-reports" placeholder="Filter by subnet or summary..."
-                                oninput="filterReports()">
+                                oninput="filterReports()" autocomplete="off">
                         </div>
                         <button class="btn btn-secondary btn-export" id="btn-export-reports"
                             onclick="exportCSV('reports')">
@@ -369,7 +369,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-audit" placeholder="Filter by operator, action or target..."
-                                oninput="filterAuditLogs()">
+                                oninput="filterAuditLogs()" autocomplete="off">
                         </div>
                         <div class="audit-filter-group">
                             <select id="audit-action-filter" class="filter-select" onchange="filterAuditLogs()">
@@ -490,7 +490,7 @@
                                         <div class="search-box">
                                             <i data-lucide="search" class="search-icon"></i>
                                             <input type="text" id="search-processes"
-                                                placeholder="Filter running processes..." oninput="filterProcesses()">
+                                                placeholder="Filter running processes..." oninput="filterProcesses()" autocomplete="off">
                                         </div>
                                     </div>
                                     <div class="table-responsive details-table-scroll">
@@ -610,7 +610,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-employees"
-                                placeholder="Filter by name, department, or position..." oninput="filterEmployees()">
+                                placeholder="Filter by name, department, or position..." oninput="filterEmployees()" autocomplete="off">
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -1082,7 +1082,7 @@
             </div>
             <div class="modal-body">
                 <div class="ws-search-box-wrapper" style="margin-bottom: 16px;">
-                    <input type="text" id="ws-device-search" placeholder="Filter devices by IP, hostname, or vendor..." oninput="filterWorkspaceDevices()" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); font-size: 14px; outline: none; background: #fff;">
+                    <input type="text" id="ws-device-search" placeholder="Filter devices by IP, hostname, or vendor..." oninput="filterWorkspaceDevices()" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); font-size: 14px; outline: none; background: #fff;" autocomplete="off">
                 </div>
                 <div class="device-selection-list" id="ws-device-list">
                     <!-- Dynamic selectable list of devices will load here -->
