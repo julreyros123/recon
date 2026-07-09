@@ -422,30 +422,36 @@ body {
 /* Data Tables */
 .table-responsive {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 485px;
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 12.5px;
+    font-size: 12px;
 }
 
 .data-table th {
     background-color: var(--gray-50);
     color: var(--color-text-muted);
-    font-weight: 600;
-    padding: 6px 10px;
+    font-weight: 700;
+    padding: 5px 8px;
     border-bottom: 1px solid var(--color-border);
     text-transform: uppercase;
     font-size: 10px;
     letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .data-table td {
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-bottom: 1px solid var(--color-border);
     color: var(--gray-900);
+    font-weight: 500;
 }
 
 .data-table tr:last-child td {
@@ -475,27 +481,30 @@ body {
 .badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
+    gap: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
     font-weight: 600;
-    border-radius: 20px;
+    border-radius: 12px;
     text-transform: capitalize;
 }
 
 .badge-active {
-    background-color: #ecfdf5;
-    color: #047857;
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid rgba(22, 163, 74, 0.2);
 }
 
 .badge-inactive {
-    background-color: #f3f4f6;
-    color: #4b5563;
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid rgba(71, 85, 105, 0.2);
 }
 
 .badge-unknown {
     background-color: #fffbeb;
-    color: #b45309;
+    color: #ca8a04;
+    border: 1px solid rgba(202, 138, 4, 0.2);
 }
 
 .badge-role {
@@ -1240,13 +1249,15 @@ tr:hover .device-type-icon-wrapper {
 }
 
 .badge-blocked {
-    background-color: #fee2e2;
+    background-color: #fef2f2;
     color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .badge-pending {
-    background-color: #fef3c7;
+    background-color: #fffbeb;
     color: #d97706;
+    border: 1px solid rgba(217, 119, 6, 0.2);
 }
 
 .read-only-label {
