@@ -30,10 +30,10 @@
     --color-inactive-bg: #f3f4f6;
 
     /* Layout & Shadow Tokens */
-    --sidebar-width: 230px;
-    --border-radius-lg: 12px;
-    --border-radius-md: 8px;
-    --border-radius-sm: 6px;
+    --sidebar-width: 200px;
+    --border-radius-lg: 10px;
+    --border-radius-md: 6px;
+    --border-radius-sm: 4px;
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
@@ -72,25 +72,25 @@ body {
     border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    padding: 24px;
+    padding: 12px 14px;
     flex-shrink: 0;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 40px;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .brand-icon {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     color: var(--gray-800);
 }
 
 .brand-name {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.5px;
     color: var(--gray-900);
@@ -106,13 +106,13 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     background: none;
     border: none;
-    padding: 12px 16px;
+    padding: 8px 10px;
     border-radius: var(--border-radius-md);
     color: var(--color-text-muted);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     text-align: left;
     cursor: pointer;
@@ -166,11 +166,11 @@ body {
 /* Main Content Area */
 .main-content {
     flex-grow: 1;
-    padding: 20px 24px;
+    padding: 12px 16px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 12px;
 }
 
 /* Header Styling */
@@ -181,15 +181,15 @@ body {
 }
 
 .header-title h1 {
-    font-size: 28px;
+    font-size: 18px;
     font-weight: 700;
-    letter-spacing: -0.75px;
+    letter-spacing: -0.5px;
     color: var(--gray-900);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .header-title p {
-    font-size: 14px;
+    font-size: 11px;
     color: var(--color-text-muted);
 }
 
@@ -305,23 +305,23 @@ body {
 .dashboard-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 10px;
 }
 
 .stat-card {
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
-    padding: 24px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
     box-shadow: var(--shadow-sm);
 }
 
 .stat-icon-wrapper {
-    width: 48px;
-    height: 48px;
+    width: 32px;
+    height: 32px;
     border-radius: var(--border-radius-md);
     background-color: var(--gray-100);
     display: flex;
@@ -341,8 +341,8 @@ body {
 }
 
 .stat-icon {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     stroke-width: 2px;
 }
 
@@ -352,14 +352,14 @@ body {
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: 10px;
     color: var(--color-text-muted);
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .stat-val {
-    font-size: 24px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--gray-900);
     letter-spacing: -0.5px;
@@ -380,7 +380,7 @@ body {
 }
 
 .table-header {
-    padding: 20px 24px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--gray-50);
 }
@@ -428,22 +428,22 @@ body {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 14px;
+    font-size: 12.5px;
 }
 
 .data-table th {
     background-color: var(--gray-50);
     color: var(--color-text-muted);
     font-weight: 600;
-    padding: 12px 14px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--color-border);
     text-transform: uppercase;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.5px;
 }
 
 .data-table td {
-    padding: 12px 14px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--color-border);
     color: var(--gray-900);
 }
