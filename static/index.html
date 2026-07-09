@@ -17,6 +17,10 @@
 </head>
 
 <body>
+    <!-- Dummy inputs to catch and trap browser username/password autofill -->
+    <input type="text" style="display:none;" autocomplete="username">
+    <input type="password" style="display:none;" autocomplete="current-password">
+
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
@@ -232,7 +236,7 @@
                     <div class="table-header" style="flex-wrap: nowrap; gap: 8px;">
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
-                            <input type="text" id="search-devices" autocomplete="off" name="search-devices-query"
+                            <input type="text" id="search-devices" autocomplete="new-password" name="search-devices-query"
                                 placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="filterDevices()">
                         </div>
                         <div class="devices-filter-group" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
@@ -334,7 +338,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-reports" placeholder="Filter by subnet or summary..."
-                                oninput="filterReports()" autocomplete="off">
+                                oninput="filterReports()" autocomplete="new-password">
                         </div>
                         <button class="btn btn-secondary btn-export" id="btn-export-reports"
                             onclick="exportCSV('reports')">
@@ -369,7 +373,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-audit" placeholder="Filter by operator, action or target..."
-                                oninput="filterAuditLogs()" autocomplete="off">
+                                oninput="filterAuditLogs()" autocomplete="new-password">
                         </div>
                         <div class="audit-filter-group">
                             <select id="audit-action-filter" class="filter-select" onchange="filterAuditLogs()">
@@ -490,7 +494,7 @@
                                         <div class="search-box">
                                             <i data-lucide="search" class="search-icon"></i>
                                             <input type="text" id="search-processes"
-                                                placeholder="Filter running processes..." oninput="filterProcesses()" autocomplete="off">
+                                                placeholder="Filter running processes..." oninput="filterProcesses()" autocomplete="new-password">
                                         </div>
                                     </div>
                                     <div class="table-responsive details-table-scroll">
@@ -610,7 +614,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-employees"
-                                placeholder="Filter by name, department, or position..." oninput="filterEmployees()" autocomplete="off">
+                                placeholder="Filter by name, department, or position..." oninput="filterEmployees()" autocomplete="new-password">
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -1082,7 +1086,7 @@
             </div>
             <div class="modal-body">
                 <div class="ws-search-box-wrapper" style="margin-bottom: 16px;">
-                    <input type="text" id="ws-device-search" placeholder="Filter devices by IP, hostname, or vendor..." oninput="filterWorkspaceDevices()" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); font-size: 14px; outline: none; background: #fff;" autocomplete="off">
+                    <input type="text" id="ws-device-search" placeholder="Filter devices by IP, hostname, or vendor..." oninput="filterWorkspaceDevices()" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); font-size: 14px; outline: none; background: #fff;" autocomplete="new-password">
                 </div>
                 <div class="device-selection-list" id="ws-device-list">
                     <!-- Dynamic selectable list of devices will load here -->
