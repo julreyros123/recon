@@ -2750,9 +2750,10 @@ tr:hover .device-type-icon-wrapper {
     border-left: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 10px;
     flex-shrink: 0;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .trusted-sidebar-header {
@@ -3373,8 +3374,8 @@ tbody tr:hover .btn-dropdown-trigger,
 
 .tree-trunk-container {
     position: relative;
-    margin-left: 8px;
-    padding-left: 10px;
+    margin-left: 4px;
+    padding-left: 6px;
     border-left: 1px dashed var(--color-border);
     display: flex;
     flex-direction: column;
@@ -3414,6 +3415,10 @@ tbody tr:hover .btn-dropdown-trigger,
     font-weight: 600;
     color: var(--color-text-main);
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 105px;
 }
 
 .tree-root-details span {
@@ -3424,8 +3429,8 @@ tbody tr:hover .btn-dropdown-trigger,
 
 .tree-branches-container {
     position: relative;
-    margin-left: 6px;
-    padding-left: 12px;
+    margin-left: 4px;
+    padding-left: 8px;
     border-left: 1px dashed var(--color-border);
     display: flex;
     flex-direction: column;
@@ -3444,6 +3449,8 @@ tbody tr:hover .btn-dropdown-trigger,
     border-radius: var(--border-radius-sm);
     transition: all 0.15s ease;
     user-select: none;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .tree-node-item:hover {
@@ -3458,9 +3465,9 @@ tbody tr:hover .btn-dropdown-trigger,
 
 .tree-connector-line {
     position: absolute;
-    left: -12px;
+    left: -8px;
     top: 50%;
-    width: 12px;
+    width: 8px;
     border-top: 1px dashed var(--color-border);
 }
 
@@ -3499,6 +3506,10 @@ tbody tr:hover .btn-dropdown-trigger,
     font-weight: 500;
     color: var(--color-text-muted);
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 105px;
 }
 
 .node-details span {

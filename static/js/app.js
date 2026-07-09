@@ -2928,7 +2928,7 @@ async function loadDynamicNetworkTree() {
         if (!response.ok) throw new Error("Failed to fetch infrastructure tree");
         const networkData = await response.json();
         
-        let htmlContent = `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Trusted Infrastructure</h3>`;
+        let htmlContent = '';
         let areaIndex = 0;
 
         for (const [areaName, data] of Object.entries(networkData)) {
