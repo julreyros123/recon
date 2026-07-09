@@ -428,11 +428,16 @@ function renderDevices(devices) {
                 : '';
 
             actionsCellHtml = `
-                <div class="actions-overlay">
-                    <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
-                    <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
-                    <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit</button>
-                    ${deleteBtnHtml}
+                <div class="dropdown-actions">
+                    <button class="btn-dropdown-trigger" onclick="toggleActionsDropdown(this, event)" title="Device Actions">
+                        <i data-lucide="more-horizontal"></i>
+                    </button>
+                    <div class="dropdown-menu-content">
+                        <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
+                        <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
+                        <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit Device</button>
+                        ${deleteBtnHtml ? `<button class="dropdown-item btn-danger-text" onclick="deleteDevice(${dev.id})">Delete Device</button>` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -2711,3 +2716,22 @@ function initSSE() {
         console.error("SSE Error:", err);
     };
 }
+
+// XIII. Actions Dropdown Helper Functions
+function toggleActionsDropdown(btn, event) {
+    event.stopPropagation();
+    const dropdown = btn.closest('.dropdown-actions');
+    const isActive = dropdown.classList.contains('active');
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.dropdown-actions').forEach(d => d.classList.remove('active'));
+    
+    if (!isActive) {
+        dropdown.classList.add('active');
+    }
+}
+
+// Close dropdowns on document click
+document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-actions').forEach(d => d.classList.remove('active'));
+});

@@ -2564,21 +2564,22 @@ tr:hover .device-type-icon-wrapper {
 .logged-in-user-info {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: 8px;
+    padding: 8px 10px;
     background: var(--gray-50);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-md);
     margin-bottom: 10px;
+    min-width: 0;
 }
 
 .user-info-avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(135deg, #1f2937, #374151);
     color: #fff;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -2604,15 +2605,19 @@ tr:hover .device-type-icon-wrapper {
 }
 
 .user-info-role {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--gray-500);
-    padding: 1px 6px;
+    padding: 1px 4px;
     background: var(--gray-200);
     border-radius: 4px;
     width: fit-content;
+    max-width: 75px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-top: 2px;
 }
 
