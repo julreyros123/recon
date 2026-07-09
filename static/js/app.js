@@ -181,7 +181,15 @@ function updateSidebarUserInfo() {
     const roleEl = document.getElementById('user-info-role-badge');
     const avatarEl = document.getElementById('user-avatar-initials');
     if (nameEl) nameEl.textContent = displayName;
-    if (roleEl) roleEl.textContent = currentRole || 'user';
+    if (roleEl) {
+        const cleanRoleMap = {
+            'super_admin': 'Network Admin',
+            'operator': 'Security Officer',
+            'Staff': 'Staff Member',
+            'user': 'Staff Member'
+        };
+        roleEl.textContent = cleanRoleMap[currentRole] || currentRole || 'Staff Member';
+    }
     if (avatarEl) {
         const parts = displayName.trim().split(' ');
         avatarEl.textContent = parts.length >= 2
@@ -423,7 +431,7 @@ function renderDevices(devices) {
         if (currentRole === 'Staff') {
             actionsCellHtml = `<span class="read-only-label">Read-Only Mode</span>`;
         } else {
-            const deleteBtnHtml = currentRole === 'Super Admin'
+            const deleteBtnHtml = currentRole === 'super_admin'
                 ? `<button class="btn-danger-text" onclick="deleteDevice(${dev.id})">Delete</button>`
                 : '';
 
@@ -810,13 +818,13 @@ async function handleLoginSubmit(event) {
         sessionStorage.setItem("currentRole", currentRole);
         sessionStorage.setItem("currentFullName", currentFullName);
 
-        // Super admin PIN gate
+        // Network administrator PIN gate
         if (data.pin_required) {
             const loginOverlay = document.getElementById("login-overlay");
             if (loginOverlay) loginOverlay.classList.remove("active");
             openModal('modal-pin-verify');
             setTimeout(() => document.getElementById('pin-d1')?.focus(), 100);
-            showToast(`Password verified. Enter your Super Admin security PIN.`);
+            showToast(`Password verified. Enter your Network Administrator security PIN.`);
         } else {
             showToast(`Access granted. Welcome, ${currentFullName}.`);
             initApp();
