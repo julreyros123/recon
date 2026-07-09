@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -108,7 +108,7 @@ async def add_security_headers(request: Request, call_next):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
-        "connect-src 'self';"
+        "connect-src 'self' ws: wss:;"
     )
     return response
 
@@ -121,6 +121,53 @@ from fastapi.responses import FileResponse
 @app.get("/")
 async def serve_spa():
     return FileResponse("static/index.html")
+
+import asyncio
+import json
+
+@app.get("/api/infrastructure/tree")
+async def get_infrastructure_tree():
+    network_map = {
+        "Server Room - Area A": {
+            "root_server": {"name": "Primary Server", "ip": "192.168.1.10", "type": "server"},
+            "endpoints": [
+                {"name": "homerouter.local", "ip": "192.168.8.1", "type": "router"},
+                {"name": "Workstation-01", "ip": "192.168.8.101", "type": "pc"},
+                {"name": "Workstation-02", "ip": "192.168.8.102", "type": "pc"}
+            ]
+        },
+        "Finance Dept - Area B": {
+            "root_server": {"name": "Finance NAS Storage", "ip": "10.45.12.4", "type": "server"},
+            "endpoints": [
+                {"name": "Accountant-PC-01", "ip": "10.45.12.50", "type": "pc"},
+                {"name": "Payroll-Terminal", "ip": "10.45.12.65", "type": "pc"}
+            ]
+        }
+    }
+    return network_map
+
+@app.websocket("/ws/infrastructure/status")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await asyncio.sleep(4)
+            status_update = {
+                "target_ip": "192.168.8.101",
+                "status": "offline",
+                "traffic_rate": "0 Kbps"
+            }
+            await websocket.send_text(json.dumps(status_update))
+            
+            await asyncio.sleep(4)
+            status_update = {
+                "target_ip": "192.168.8.101",
+                "status": "high-traffic",
+                "traffic_rate": "847 Mbps"
+            }
+            await websocket.send_text(json.dumps(status_update))
+    except WebSocketDisconnect:
+        print("Client dashboard connection closed cleanly.")
 
 # Core API routers
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])

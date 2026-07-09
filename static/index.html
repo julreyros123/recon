@@ -13,7 +13,7 @@
     <script src="/static/js/lucide.min.js"></script>
     <!-- Chart.js -->
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=15">
+    <link rel="stylesheet" href="/static/css/style.css?v=16">
 </head>
 
 <body>
@@ -237,7 +237,7 @@
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
                             <input type="text" id="search-devices" autocomplete="new-password" name="search-devices-query"
-                                placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="filterDevices()">
+                                placeholder="Filter by IP, Hostname, MAC or Vendor..." oninput="handleGlobalSearch(this.value)">
                         </div>
                         <div class="devices-filter-group" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                             <select id="device-trust-filter" class="filter-select" onchange="filterDevices()">
@@ -265,7 +265,7 @@
                                 <option value="Finance">Finance</option>
                                 <option value="Admin">Admin</option>
                             </select>
-                            <button class="btn btn-secondary btn-export" id="btn-export-devices" onclick="exportDevicesCSV()">
+                            <button class="btn btn-secondary btn-export" id="btn-export-devices" onclick="exportVisibleTableToCSV()">
                                 <i data-lucide="download"></i>
                                 <span>Export CSV</span>
                             </button>
@@ -658,10 +658,10 @@
         <!-- Trusted Devices Sidebar -->
         <aside class="trusted-sidebar" id="trusted-sidebar">
             <div class="trusted-sidebar-header">
-                <h3>Trusted PCs</h3>
+                <h3>Trusted Infrastructure</h3>
                 <span class="pulse-dot"></span>
             </div>
-            <div class="trusted-list" id="trusted-devices-list">
+            <div class="trusted-list" id="dynamic-network-tree">
                 <!-- Loaded dynamically -->
             </div>
         </aside>
@@ -1143,7 +1143,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=16"></script>
+    <script src="/static/js/app.js?v=17"></script>
 </body>
 
 </html>

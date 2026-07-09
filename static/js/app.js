@@ -170,6 +170,11 @@ function initApp() {
     
     // Initialize real-time event listener
     initSSE();
+
+    // Load infrastructure tree and start status listener
+    loadDynamicNetworkTree().then(() => {
+        connectStatusWebSocket();
+    });
 }
 
 function updateSidebarUserInfo() {
@@ -451,7 +456,7 @@ function renderDevices(devices) {
         }
 
         return `
-            <tr class="${!dev.is_trusted ? 'untrusted-row' : ''}">
+            <tr class="${!dev.is_trusted ? 'untrusted-row' : ''}" data-device-ip="${dev.ip}">
                 <td>
                     <div class="device-type-icon-wrapper" title="Classification: ${dev.os_type || 'generic'}">
                         <i data-lucide="${typeIcon}"></i>
@@ -2906,3 +2911,301 @@ function toggleActionsDropdown(btn, event) {
 document.addEventListener('click', () => {
     document.querySelectorAll('.dropdown-actions').forEach(d => d.classList.remove('active'));
 });
+
+// ==========================================
+// XIV. Dynamic Infrastructure Tree & WebSocket
+// ==========================================
+
+let currentFilteredIp = null;
+let infrastructureStatusSocket = null;
+
+async function loadDynamicNetworkTree() {
+    const container = document.getElementById("dynamic-network-tree");
+    if (!container) return;
+
+    try {
+        const response = await fetch("/api/infrastructure/tree", { headers: getAuthHeaders() });
+        if (!response.ok) throw new Error("Failed to fetch infrastructure tree");
+        const networkData = await response.json();
+        
+        let htmlContent = `<h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Trusted Infrastructure</h3>`;
+        let areaIndex = 0;
+
+        for (const [areaName, data] of Object.entries(networkData)) {
+            const treeId = `dynamic-tree-zone-${areaIndex}`;
+            
+            // Render zone wrapper
+            htmlContent += `
+                <div class="tree-zone-wrapper">
+                    <!-- Collapsible Zone Trigger -->
+                    <button onclick="toggleTree('${treeId}', this)" class="tree-zone-toggle">
+                        <svg class="transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        📁 ${areaName}
+                    </button>
+
+                    <!-- Tree Content Trunk -->
+                    <div id="${treeId}" class="tree-trunk-container">
+                        
+                        <!-- Root Server Node -->
+                        <div class="tree-root-node">
+                            <div class="tree-root-icon">
+                                <i data-lucide="server"></i>
+                            </div>
+                            <div class="tree-root-details">
+                                <p>${data.root_server.name}</p>
+                                <span>${data.root_server.ip}</span>
+                            </div>
+                        </div>
+
+                        <!-- Branches Container -->
+                        <div class="tree-branches-container">
+            `;
+
+            // Render endpoints
+            data.endpoints.forEach(endpoint => {
+                const isRouter = endpoint.type === 'router';
+                const itemIconColor = isRouter ? 'bg-amber' : 'bg-blue';
+                const typeIcon = isRouter ? 'wifi' : 'monitor';
+                
+                htmlContent += `
+                    <div onclick="filterTableByDevice('${endpoint.ip}', this)" 
+                         class="tree-node-item" 
+                         data-node-ip="${endpoint.ip}">
+                        
+                        <span class="tree-connector-line"></span>
+                        
+                        <div class="tree-node-left">
+                            <div class="node-icon-bg ${itemIconColor}">
+                                <span class="node-status-dot online"></span>
+                                <i data-lucide="${typeIcon}"></i>
+                            </div>
+                            <div class="node-details">
+                                <p class="target-hostname-label">${endpoint.name}</p>
+                                <span>${endpoint.ip}</span>
+                            </div>
+                        </div>
+                        
+                        <span class="traffic-tag hidden">0 Kbps</span>
+                    </div>
+                `;
+            });
+
+            htmlContent += `
+                        </div> <!-- End Branches Container -->
+                    </div> <!-- End Tree Content Trunk -->
+                </div>
+            `;
+            areaIndex++;
+        }
+
+        container.innerHTML = htmlContent;
+        lucide.createIcons();
+    } catch (error) {
+        console.error("Failed to map dynamic network tree:", error);
+    }
+}
+
+function toggleTree(treeId, btn) {
+    const container = document.getElementById(treeId);
+    if (!container) return;
+    container.classList.toggle("hidden");
+    btn.classList.toggle("collapsed");
+}
+
+function connectStatusWebSocket() {
+    if (infrastructureStatusSocket && (infrastructureStatusSocket.readyState === WebSocket.OPEN || infrastructureStatusSocket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+    
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socketUrl = `${wsProtocol}//${window.location.host}/ws/infrastructure/status`;
+    
+    infrastructureStatusSocket = new WebSocket(socketUrl);
+
+    infrastructureStatusSocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        const targetNode = document.querySelector(`[data-node-ip="${data.target_ip}"]`);
+        if (!targetNode) return;
+
+        const badge = targetNode.querySelector('.node-status-dot');
+        const trafficTag = targetNode.querySelector('.traffic-tag');
+
+        if (data.status === 'offline') {
+            if (badge) {
+                badge.className = "node-status-dot offline";
+            }
+            if (trafficTag) {
+                trafficTag.classList.add('hidden');
+                trafficTag.classList.remove('alert-tag');
+            }
+        } 
+        else if (data.status === 'high-traffic') {
+            if (badge) {
+                badge.className = "node-status-dot high-traffic";
+            }
+            if (trafficTag) {
+                trafficTag.innerText = data.traffic_rate;
+                trafficTag.classList.remove('hidden');
+                trafficTag.classList.add('alert-tag');
+            }
+        } 
+        else { // 'online'
+            if (badge) {
+                badge.className = "node-status-dot online";
+            }
+            if (trafficTag) {
+                trafficTag.classList.add('hidden');
+                trafficTag.classList.remove('alert-tag');
+            }
+        }
+    };
+
+    infrastructureStatusSocket.onclose = () => {
+        // Retry connection after 5 seconds
+        setTimeout(connectStatusWebSocket, 5000);
+    };
+    
+    infrastructureStatusSocket.onerror = (error) => {
+        console.error("Infrastructure status WebSocket error:", error);
+    };
+}
+
+function filterTableByDevice(ipAddress, element) {
+    const tableBody = document.getElementById("devices-list-body");
+    if (!tableBody) return;
+
+    const rows = tableBody.querySelectorAll("tr[data-device-ip]");
+    const allTreeNodes = document.querySelectorAll(".tree-node-item");
+
+    // Remove active styles from other tree nodes
+    allTreeNodes.forEach(node => {
+        node.classList.remove("active-filter");
+    });
+
+    if (currentFilteredIp === ipAddress) {
+        currentFilteredIp = null;
+        rows.forEach(row => {
+            row.style.display = "";
+            row.classList.remove("hidden");
+        });
+        return;
+    }
+
+    currentFilteredIp = ipAddress;
+    element.classList.add("active-filter");
+
+    rows.forEach(row => {
+        const rowIp = row.getAttribute("data-device-ip");
+        if (rowIp === ipAddress) {
+            row.style.display = "";
+            row.classList.remove("hidden");
+        } else {
+            row.style.display = "none";
+            row.classList.add("hidden");
+        }
+    });
+}
+
+function handleGlobalSearch(query) {
+    const cleanQuery = query.toLowerCase().trim();
+
+    // 1. Filter Devices Table Rows
+    const tableBody = document.getElementById("devices-list-body");
+    if (tableBody) {
+        const tableRows = tableBody.querySelectorAll("tr[data-device-ip]");
+        tableRows.forEach(row => {
+            const rowContent = row.textContent.toLowerCase();
+            if (rowContent.includes(cleanQuery)) {
+                row.style.display = "";
+                row.classList.remove("hidden");
+            } else {
+                row.style.display = "none";
+                row.classList.add("hidden");
+            }
+        });
+    }
+
+    // 2. Filter Sidebar Infrastructure Nodes
+    const treeNodes = document.querySelectorAll(".tree-node-item");
+    treeNodes.forEach(node => {
+        const nodeIp = node.getAttribute("data-node-ip") || "";
+        const hostnameLabel = node.querySelector(".target-hostname-label");
+        const nodeHostname = hostnameLabel ? hostnameLabel.textContent.toLowerCase() : "";
+
+        if (nodeIp.includes(cleanQuery) || nodeHostname.includes(cleanQuery)) {
+            node.classList.remove("opacity-25", "pointer-events-none");
+        } else {
+            node.classList.add("opacity-25", "pointer-events-none");
+        }
+    });
+
+    // 3. Expand parent blocks if search matches child nodes
+    const areaContainers = document.querySelectorAll(".tree-trunk-container");
+    areaContainers.forEach(container => {
+        const activeChildren = container.querySelectorAll(".tree-node-item:not(.opacity-25)");
+        
+        if (activeChildren.length > 0 && cleanQuery !== "") {
+            container.classList.remove("hidden");
+            const toggleButton = container.previousElementSibling;
+            if (toggleButton) {
+                toggleButton.classList.remove("collapsed");
+            }
+        }
+    });
+}
+
+function exportVisibleTableToCSV() {
+    const table = document.querySelector(".data-table");
+    if (!table) return;
+
+    const rows = table.querySelectorAll("tr");
+    const csvData = [];
+
+    // Extract Headers
+    const headerCells = rows[0].querySelectorAll("th");
+    const headers = [];
+    headerCells.forEach(cell => {
+        // Strip icon sorting arrow text
+        let headerText = cell.textContent.trim().replace(/↕/g, '').trim();
+        headers.push(`"${headerText.replace(/"/g, '""')}"`);
+    });
+    if (headers.length > 0) csvData.push(headers.join(","));
+
+    // Extract Visible Rows
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.classList.contains("hidden") || row.style.display === "none") continue;
+
+        const cells = row.querySelectorAll("td");
+        const rowData = [];
+
+        cells.forEach(cell => {
+            let cellText = cell.textContent.trim()
+                               .replace(/\s+/g, ' ')
+                               .replace(/"/g, '""');
+            rowData.push(`"${cellText}"`);
+        });
+
+        if (rowData.length > 0) {
+            csvData.push(rowData.join(","));
+        }
+    }
+
+    const csvString = csvData.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "recon_nds_device_logs.csv");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+

@@ -3310,3 +3310,242 @@ tbody tr:hover .btn-dropdown-trigger,
     font-size: 13px;
     color: var(--color-text-muted);
 }
+
+/* Dynamic Infrastructure Tree Styles */
+.tree-zone-wrapper {
+    margin-bottom: 12px;
+}
+
+.tree-zone-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    border-radius: var(--border-radius-sm);
+    color: var(--color-text-main);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tree-zone-toggle:hover {
+    background-color: var(--gray-100);
+}
+
+.tree-zone-toggle svg {
+    width: 12px;
+    height: 12px;
+    color: var(--color-text-light);
+    transition: transform 0.2s ease;
+}
+
+.tree-zone-toggle.collapsed svg {
+    transform: rotate(-90deg);
+}
+
+.tree-trunk-container {
+    position: relative;
+    margin-left: 8px;
+    padding-left: 10px;
+    border-left: 1px dashed var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.tree-trunk-container.hidden {
+    display: none;
+}
+
+.tree-root-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+}
+
+.tree-root-icon {
+    padding: 4px;
+    background-color: var(--gray-900);
+    color: #ffffff;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tree-root-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tree-root-details p {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-main);
+    line-height: 1.2;
+}
+
+.tree-root-details span {
+    font-size: 9.5px;
+    color: var(--color-text-light);
+    font-family: monospace;
+}
+
+.tree-branches-container {
+    position: relative;
+    margin-left: 6px;
+    padding-left: 12px;
+    border-left: 1px dashed var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tree-node-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.tree-node-item:hover {
+    background-color: var(--gray-100);
+}
+
+.tree-node-item.active-filter {
+    background-color: #eff6ff !important;
+    border-left: 2px solid #2563eb !important;
+    padding-left: 8px !important;
+}
+
+.tree-connector-line {
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    width: 12px;
+    border-top: 1px dashed var(--color-border);
+}
+
+.tree-node-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.node-icon-bg {
+    position: relative;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.node-icon-bg svg {
+    width: 14px;
+    height: 14px;
+}
+
+.node-icon-bg.bg-blue {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.node-icon-bg.bg-amber {
+    background-color: #fffbeb;
+    color: #d97706;
+}
+
+.node-details p {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    line-height: 1.2;
+}
+
+.node-details span {
+    font-size: 9px;
+    color: var(--color-text-light);
+    font-family: monospace;
+}
+
+.node-status-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1px solid #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.node-status-dot.online {
+    background-color: #10b981;
+}
+
+.node-status-dot.offline {
+    background-color: #ef4444;
+    animation: pulseGlowRed 2s infinite ease-in-out;
+}
+
+.node-status-dot.high-traffic {
+    background-color: #f59e0b;
+}
+
+.traffic-tag {
+    font-size: 9px;
+    font-family: monospace;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    transition: opacity 0.15s ease;
+}
+
+.traffic-tag.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.traffic-tag.alert-tag {
+    color: #b45309;
+    background-color: #fffbeb;
+    opacity: 1;
+}
+
+.tree-node-item.opacity-25 {
+    opacity: 0.25;
+}
+
+.tree-node-item.pointer-events-none {
+    pointer-events: none;
+}
+
+@keyframes pulseGlowRed {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
