@@ -541,6 +541,38 @@ def unlock_user(
     finally:
         pass
 
+@router.post("/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    request: Request,
+    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        default_pw = row["username"] + "123"
+        pw_hash = hash_password(default_pw)
+
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
+        conn.commit()
+
+        log_audit_event(
+            username=current_user["username"],
+            role=current_user["role"],
+            action="POLICY",
+            target=row["username"],
+            ip_address=get_client_ip(request),
+            details=f"Reset password to default for user account: {row['username']}"
+        )
+        return {"status": "success", "message": f"Password reset to default for {row['username']}"}
+    finally:
+        pass
+
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,

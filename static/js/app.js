@@ -517,6 +517,9 @@ function renderUsers(users) {
         const deleteButton = currentRole === 'super_admin'
             ? `<button class="btn-danger-text" onclick="deleteUser(${user.id})">Remove</button>`
             : `<span class="users-locked">Locked</span>`;
+        const resetButton = currentRole === 'super_admin'
+            ? `<button class="btn-edit-text" onclick="resetUserPassword(${user.id}, '${user.username}')" style="margin-right: 8px;">Reset PW</button>`
+            : '';
         const lockBadge = user.locked_until
             ? `<span class="badge badge-inactive" title="Locked until ${user.locked_until}">Locked</span>`
             : (user.is_active
@@ -536,7 +539,10 @@ function renderUsers(users) {
                     ${lockBadge}
                     ${unlockBtn}
                 </td>
-                <td class="actions-col">${deleteButton}</td>
+                <td class="actions-col" style="white-space: nowrap;">
+                    ${resetButton}
+                    ${deleteButton}
+                </td>
             </tr>
         `;
     }).join('');
@@ -1145,6 +1151,26 @@ async function deleteUser(userId) {
     } catch (error) {
         console.error("Error deleting operator:", error);
         showToast("Failed to remove operator.");
+    }
+}
+
+// Reset operator password callback
+async function resetUserPassword(userId, username) {
+    if (!confirm(`Are you sure you want to reset the password for operator '${username}' back to the default '${username}123'?`)) return;
+
+    try {
+        const response = await fetch(`/api/users/${userId}/reset-password`, {
+            method: "POST",
+            headers: getAuthHeaders()
+        });
+        if (handleApiError(response)) return;
+        if (!response.ok) throw new Error("Password reset failed.");
+
+        showToast(`Password successfully reset to default: '${username}123'`);
+        fetchUsers();
+    } catch (error) {
+        console.error("Error resetting password:", error);
+        showToast(`Failed: ${error.message}`);
     }
 }
 
