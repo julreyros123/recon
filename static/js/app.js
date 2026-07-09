@@ -350,139 +350,184 @@ function renderDevices(devices) {
         return;
     }
 
-    listBody.innerHTML = listToRender.map(dev => {
-        const formattedDate = formatFriendlyTime(dev.last_seen);
+    // Group devices by category
+    const categories = [
+        { key: 'server', label: 'Servers', icon: 'server' },
+        { key: 'workstation', label: 'Workstations & PCs', icon: 'monitor' },
+        { key: 'router', label: 'Routers & Gateways', icon: 'wifi' },
+        { key: 'printer', label: 'Printers & Scanners', icon: 'printer' },
+        { key: 'smart-tv', label: 'Smart TVs & Displays', icon: 'tv' },
+        { key: 'mobile', label: 'Mobiles & Tablets', icon: 'smartphone' },
+        { key: 'generic', label: 'Generic / Other Devices', icon: 'help-circle' }
+    ];
 
-        // Parse open ports list
-        let portsList = [];
-        try {
-            portsList = dev.open_ports ? JSON.parse(dev.open_ports) : [];
-        } catch (e) {
-            console.error("Error parsing ports for IP:", dev.ip, e);
-        }
+    const grouped = {};
+    categories.forEach(cat => grouped[cat.key] = []);
 
-        // Get Device Type Icon
-        const typeIcon = deviceTypeIcons[dev.os_type] || 'help-circle';
-
-        // Render port pills (highlight high-risk ports in red)
-        let portsHtml = '<span class="no-ports">None</span>';
-        const devJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dev))));
-
-        if (portsList.length > 0) {
-            const displayPorts = portsList.slice(0, 2);
-            let pills = displayPorts.map(p => {
-                const isHighRisk = HIGH_RISK_PORTS.includes(p.port);
-                const portClass = isHighRisk ? 'port-badge-pill high-risk' : 'port-badge-pill';
-                const pillTitle = isHighRisk ? `${p.service} (Exposed High-Risk Service!)` : p.service;
-                return `<span class="${portClass}" title="${pillTitle}">${p.port}</span>`;
-            }).join('');
-
-            if (portsList.length > 2) {
-                pills += `<span class="port-badge-more-pill" onclick="viewPorts('${devJsonBase64}')">+${portsList.length - 2}</span>`;
-            }
-            portsHtml = `<div class="ports-cell-wrapper">${pills}</div>`;
-        } else if (dev.status === 'active' && currentRole !== 'Staff') {
-            portsHtml = `<span class="scan-needed-link" onclick="runDevicePortScan(${dev.id})">Scan needed</span>`;
-        }
-
-        // Handle Hostname with Trust indicators
-        let hostnameHtml = dev.hostname || 'Unknown';
-        if (!dev.is_trusted && dev.trust_level === 'Unknown') {
-            hostnameHtml = `<span class="host-unverified"><i data-lucide="shield-alert" class="icon-unverified"></i> ${hostnameHtml}</span>`;
-        } else if (dev.trust_level === 'Blocked') {
-            hostnameHtml = `<span class="host-blocked"><i data-lucide="shield-off" class="icon-blocked"></i> ${hostnameHtml}</span>`;
+    listToRender.forEach(dev => {
+        const type = dev.os_type || 'generic';
+        if (grouped[type]) {
+            grouped[type].push(dev);
         } else {
-            hostnameHtml = `<span class="host-trusted"><i data-lucide="shield-check" class="icon-trusted"></i> ${hostnameHtml}</span>`;
+            grouped['generic'].push(dev);
         }
+    });
 
-        // Show owner and department info as sub-text under hostname
-        let ownerDeptHtml = "";
-        if (dev.owner_name && dev.owner_name !== "None") {
-            ownerDeptHtml = `<div class="device-meta-assigned">Owner: ${dev.owner_name} (${dev.department || 'N/A'})</div>`;
-        } else {
-            ownerDeptHtml = `<div class="device-meta-unassigned">Unassigned Device</div>`;
-        }
+    let finalHtml = '';
 
-        // Trust Toggle Button Configuration
-        const trustButtonText = dev.is_trusted ? 'Revoke Trust' : 'Trust Device';
-        const trustButtonClass = dev.is_trusted ? 'btn-trust trusted' : 'btn-trust';
+    categories.forEach(cat => {
+        const catDevices = grouped[cat.key];
+        if (catDevices.length === 0) return;
 
-        // Map trust level badge classes
-        let trustLevelHtml = "";
-        if (dev.trust_level === 'Trusted') {
-            trustLevelHtml = `<span class="badge badge-active"><span class="bullet-indicator"></span>Trusted</span>`;
-        } else if (dev.trust_level === 'Blocked') {
-            trustLevelHtml = `<span class="badge badge-blocked"><span class="bullet-indicator"></span>Blocked</span>`;
-        } else if (dev.trust_level === 'Pending') {
-            trustLevelHtml = `<span class="badge badge-pending"><span class="bullet-indicator"></span>Pending</span>`;
-        } else {
-            trustLevelHtml = `<span class="badge badge-unknown"><span class="bullet-indicator"></span>Unknown</span>`;
-        }
-
-        // Patch Status Badge
-        let patchHtml = '';
-        if (dev.firmware_eol) {
-            patchHtml = `<span class="patch-badge patch-eol" title="End-of-Life: no patches available">&#x1F534; EOL</span>`;
-        } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version !== dev.latest_firmware) {
-            patchHtml = `<span class="patch-badge patch-needed" title="Installed: ${dev.firmware_version} | Latest: ${dev.latest_firmware}">&#x1F7E1; Needs Patch</span>`;
-        } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version === dev.latest_firmware) {
-            patchHtml = `<span class="patch-badge patch-ok" title="Up to date: ${dev.firmware_version}">&#x1F7E2; Up to Date</span>`;
-        } else {
-            patchHtml = `<span class="patch-badge patch-unknown" title="No version info recorded">&#x26AB; Unknown</span>`;
-        }
-
-        // RBAC Actions configuration
-        let actionsCellHtml = "";
-        if (currentRole === 'Staff') {
-            actionsCellHtml = `<span class="read-only-label">Read-Only Mode</span>`;
-        } else {
-            const deleteBtnHtml = currentRole === 'super_admin'
-                ? `<button class="btn-danger-text" onclick="deleteDevice(${dev.id})">Delete</button>`
-                : '';
-
-            actionsCellHtml = `
-                <div class="dropdown-actions">
-                    <button class="btn-dropdown-trigger" onclick="toggleActionsDropdown(this, event)" title="Device Actions">
-                        <i data-lucide="more-horizontal"></i>
-                    </button>
-                    <div class="dropdown-menu-content">
-                        <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
-                        <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
-                        <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit Device</button>
-                        ${deleteBtnHtml ? `<button class="dropdown-item btn-danger-text" onclick="deleteDevice(${dev.id})">Delete Device</button>` : ''}
-                    </div>
-                </div>
-            `;
-        }
-
-        return `
-            <tr class="${!dev.is_trusted ? 'untrusted-row' : ''}" data-device-ip="${dev.ip}">
-                <td>
-                    <div class="device-type-icon-wrapper" title="Classification: ${dev.os_type || 'generic'}">
-                        <i data-lucide="${typeIcon}"></i>
+        // Render Divider Header for this group
+        finalHtml += `
+            <tr class="table-group-divider">
+                <td colspan="8" style="padding: 6px 12px; background-color: var(--color-bg-sidebar); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">
+                        <i data-lucide="${cat.icon}" style="width: 14px; height: 14px; color: var(--color-text-light);"></i>
+                        <span>${cat.label} (${catDevices.length})</span>
                     </div>
                 </td>
-                <td>
-                    <div>
-                        ${hostnameHtml}
-                        ${ownerDeptHtml}
-                    </div>
-                </td>
-                <td>
-                    <div><code class="code-ip">${dev.ip}</code></div>
-                    <div><code class="code-mac" style="font-size: 11px; color: var(--color-text-muted);">${dev.mac || 'N/A'}</code></div>
-                </td>
-                <td>${dev.vendor || 'Unknown Brand'}</td>
-                <td>
-                    <div style="margin-bottom: 4px;">${trustLevelHtml}</div>
-                    <div>${patchHtml}</div>
-                </td>
-                <td>${portsHtml}</td>
-                <td class="td-last-seen">${formattedDate}</td>
-                <td class="actions-col">${actionsCellHtml}</td>
             </tr>
         `;
-    }).join('');
+
+        // Render devices inside this group
+        finalHtml += catDevices.map(dev => {
+            const formattedDate = formatFriendlyTime(dev.last_seen);
+
+            // Parse open ports list
+            let portsList = [];
+            try {
+                portsList = dev.open_ports ? JSON.parse(dev.open_ports) : [];
+            } catch (e) {
+                console.error("Error parsing ports for IP:", dev.ip, e);
+            }
+
+            // Get Device Type Icon
+            const typeIcon = deviceTypeIcons[dev.os_type] || 'help-circle';
+
+            // Render port pills (highlight high-risk ports in red)
+            let portsHtml = '<span class="no-ports">None</span>';
+            const devJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dev))));
+
+            if (portsList.length > 0) {
+                const displayPorts = portsList.slice(0, 2);
+                let pills = displayPorts.map(p => {
+                    const isHighRisk = HIGH_RISK_PORTS.includes(p.port);
+                    const portClass = isHighRisk ? 'port-badge-pill high-risk' : 'port-badge-pill';
+                    const pillTitle = isHighRisk ? `${p.service} (Exposed High-Risk Service!)` : p.service;
+                    return `<span class="${portClass}" title="${pillTitle}">${p.port}</span>`;
+                }).join('');
+
+                if (portsList.length > 2) {
+                    pills += `<span class="port-badge-more-pill" onclick="viewPorts('${devJsonBase64}')">+${portsList.length - 2}</span>`;
+                }
+                portsHtml = `<div class="ports-cell-wrapper">${pills}</div>`;
+            } else if (dev.status === 'active' && currentRole !== 'Staff') {
+                portsHtml = `<span class="scan-needed-link" onclick="runDevicePortScan(${dev.id})">Scan needed</span>`;
+            }
+
+            // Handle Hostname with Trust indicators
+            let hostnameHtml = dev.hostname || 'Unknown';
+            if (!dev.is_trusted && dev.trust_level === 'Unknown') {
+                hostnameHtml = `<span class="host-unverified"><i data-lucide="shield-alert" class="icon-unverified"></i> ${hostnameHtml}</span>`;
+            } else if (dev.trust_level === 'Blocked') {
+                hostnameHtml = `<span class="host-blocked"><i data-lucide="shield-off" class="icon-blocked"></i> ${hostnameHtml}</span>`;
+            } else {
+                hostnameHtml = `<span class="host-trusted"><i data-lucide="shield-check" class="icon-trusted"></i> ${hostnameHtml}</span>`;
+            }
+
+            // Show owner and department info as sub-text under hostname
+            let ownerDeptHtml = "";
+            if (dev.owner_name && dev.owner_name !== "None") {
+                ownerDeptHtml = `<div class="device-meta-assigned">Owner: ${dev.owner_name} (${dev.department || 'N/A'})</div>`;
+            } else {
+                ownerDeptHtml = `<div class="device-meta-unassigned">Unassigned Device</div>`;
+            }
+
+            // Trust Toggle Button Configuration
+            const trustButtonText = dev.is_trusted ? 'Revoke Trust' : 'Trust Device';
+            const trustButtonClass = dev.is_trusted ? 'btn-trust trusted' : 'btn-trust';
+
+            // Map trust level badge classes
+            let trustLevelHtml = "";
+            if (dev.trust_level === 'Trusted') {
+                trustLevelHtml = `<span class="badge badge-active"><span class="bullet-indicator"></span>Trusted</span>`;
+            } else if (dev.trust_level === 'Blocked') {
+                trustLevelHtml = `<span class="badge badge-blocked"><span class="bullet-indicator"></span>Blocked</span>`;
+            } else if (dev.trust_level === 'Pending') {
+                trustLevelHtml = `<span class="badge badge-pending"><span class="bullet-indicator"></span>Pending</span>`;
+            } else {
+                trustLevelHtml = `<span class="badge badge-unknown"><span class="bullet-indicator"></span>Unknown</span>`;
+            }
+
+            // Patch Status Badge
+            let patchHtml = '';
+            if (dev.firmware_eol) {
+                patchHtml = `<span class="patch-badge patch-eol" title="End-of-Life: no patches available">&#x1F534; EOL</span>`;
+            } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version !== dev.latest_firmware) {
+                patchHtml = `<span class="patch-badge patch-needed" title="Installed: ${dev.firmware_version} | Latest: ${dev.latest_firmware}">&#x1F7E1; Needs Patch</span>`;
+            } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version === dev.latest_firmware) {
+                patchHtml = `<span class="patch-badge patch-ok" title="Up to date: ${dev.firmware_version}">&#x1F7E2; Up to Date</span>`;
+            } else {
+                patchHtml = `<span class="patch-badge patch-unknown" title="No version info recorded">&#x26AB; Unknown</span>`;
+            }
+
+            // RBAC Actions configuration
+            let actionsCellHtml = "";
+            if (currentRole === 'Staff') {
+                actionsCellHtml = `<span class="read-only-label">Read-Only Mode</span>`;
+            } else {
+                const deleteBtnHtml = currentRole === 'super_admin'
+                    ? `<button class="btn-danger-text" onclick="deleteDevice(${dev.id})">Delete</button>`
+                    : '';
+
+                actionsCellHtml = `
+                    <div class="dropdown-actions">
+                        <button class="btn-dropdown-trigger" onclick="toggleActionsDropdown(this, event)" title="Device Actions">
+                            <i data-lucide="more-horizontal"></i>
+                        </button>
+                        <div class="dropdown-menu-content">
+                            <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
+                            <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
+                            <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit Device</button>
+                            ${deleteBtnHtml ? `<button class="dropdown-item btn-danger-text" onclick="deleteDevice(${dev.id})">Delete Device</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <tr class="${!dev.is_trusted ? 'untrusted-row' : ''}" data-device-ip="${dev.ip}">
+                    <td>
+                        <div class="device-type-icon-wrapper" title="Classification: ${dev.os_type || 'generic'}">
+                            <i data-lucide="${typeIcon}"></i>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            ${hostnameHtml}
+                            ${ownerDeptHtml}
+                        </div>
+                    </td>
+                    <td>
+                        <div><code class="code-ip">${dev.ip}</code></div>
+                        <div><code class="code-mac" style="font-size: 11px; color: var(--color-text-muted);">${dev.mac || 'N/A'}</code></div>
+                    </td>
+                    <td>${dev.vendor || 'Unknown Brand'}</td>
+                    <td>
+                        <div style="margin-bottom: 4px;">${trustLevelHtml}</div>
+                        <div>${patchHtml}</div>
+                    </td>
+                    <td>${portsHtml}</td>
+                    <td class="td-last-seen">${formattedDate}</td>
+                    <td class="actions-col">${actionsCellHtml}</td>
+                </tr>
+            `;
+        }).join('');
+    });
+
+    listBody.innerHTML = finalHtml;
 
     lucide.createIcons();
 }
