@@ -2687,6 +2687,33 @@ function renderWorkspaceDeviceList(query = '') {
 async function addDeviceToWorkspace(deviceId) {
     if (!activeWorkspaceId) return;
 
+    const device = devicesState.find(d => d.id === deviceId);
+    if (!device) return;
+
+    const currentWorkspace = workspacesState.find(w => w.id === activeWorkspaceId);
+    const wsName = currentWorkspace ? currentWorkspace.name : 'this workspace';
+
+    // Check if the device is currently in another workspace
+    let otherWorkspaceName = null;
+    workspacesState.forEach(ws => {
+        if (ws.id !== activeWorkspaceId) {
+            if ((ws.devices || []).some(d => d.id === deviceId)) {
+                
+                otherWorkspaceName = ws.name;
+            }
+        }
+    });
+
+    let confirmMsg = `Are you sure you want to add '${device.hostname || device.ip}' to workspace '${wsName}'?`;
+    
+    if (otherWorkspaceName) {
+        confirmMsg = `Warning: '${device.hostname || device.ip}' is currently assigned to '${otherWorkspaceName}'.\n\nAre you sure you want to move it to '${wsName}'?`;
+    } else if (!device.is_trusted) {
+        confirmMsg = `Warning: '${device.hostname || device.ip}' is an UNTRUSTED/PENDING device.\n\nAre you sure you want to add it to '${wsName}'?`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
     try {
         const response = await fetch(`/api/workspaces/${activeWorkspaceId}/add-device/${deviceId}`, {
             method: 'POST',
