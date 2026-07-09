@@ -227,7 +227,7 @@ async function fetchUsers() {
         const response = await fetch("/api/users/", { headers: getAuthHeaders() });
         if (response.status === 403) {
             usersState = [];
-            renderUsers(usersState);
+            renderUsers(null);
             return;
         }
         if (handleApiError(response)) return;
@@ -246,7 +246,7 @@ async function fetchReports() {
         const response = await fetch("/api/reports/", { headers: getAuthHeaders() });
         if (response.status === 403) {
             reportsState = [];
-            renderReports(reportsState);
+            renderReports(null);
             return;
         }
         if (handleApiError(response)) return;
@@ -266,7 +266,7 @@ async function fetchAuditLogs() {
         const response = await fetch("/api/audit/", { headers: getAuthHeaders() });
         if (response.status === 403) {
             auditState = [];
-            renderAuditLogs(auditState);
+            renderAuditLogs(null);
             return;
         }
         if (handleApiError(response)) return;
@@ -479,6 +479,12 @@ function renderUsers(users) {
     const listBody = document.getElementById("users-list-body");
     if (!listBody) return;
 
+    if (users === null) {
+        listBody.innerHTML = `<tr><td colspan="5" class="users-empty" style="color: var(--color-error); font-weight: 500; text-align: center; padding: 24px;"><i data-lucide="shield-alert" class="icon-blocked" style="vertical-align: middle; margin-right: 6px; width: 18px; height: 18px;"></i> Access Denied: Insufficient privileges.</td></tr>`;
+        lucide.createIcons();
+        return;
+    }
+
     if (users.length === 0) {
         listBody.innerHTML = `<tr><td colspan="5" class="users-empty">No registered users.</td></tr>`;
         return;
@@ -535,6 +541,12 @@ function renderReports(reports) {
     const listBody = document.getElementById("reports-list-body");
     if (!listBody) return;
 
+    if (reports === null) {
+        listBody.innerHTML = `<tr><td colspan="6" class="reports-empty" style="color: var(--color-error); font-weight: 500; text-align: center; padding: 24px;"><i data-lucide="shield-alert" class="icon-blocked" style="vertical-align: middle; margin-right: 6px; width: 18px; height: 18px;"></i> Access Denied: Insufficient privileges.</td></tr>`;
+        lucide.createIcons();
+        return;
+    }
+
     if (reports.length === 0) {
         listBody.innerHTML = `<tr><td colspan="6" class="reports-empty">No scan reports logged yet.</td></tr>`;
         return;
@@ -559,6 +571,12 @@ function renderReports(reports) {
 function renderAuditLogs(logs) {
     const listBody = document.getElementById("audit-list-body");
     if (!listBody) return;
+
+    if (logs === null) {
+        listBody.innerHTML = `<tr><td colspan="6" class="audit-empty" style="color: var(--color-error); font-weight: 500; text-align: center; padding: 24px;"><i data-lucide="shield-alert" class="icon-blocked" style="vertical-align: middle; margin-right: 6px; width: 18px; height: 18px;"></i> Access Denied: Insufficient privileges.</td></tr>`;
+        lucide.createIcons();
+        return;
+    }
 
     if (logs.length === 0) {
         listBody.innerHTML = `<tr><td colspan="6" class="audit-empty">No audit events tracked yet.</td></tr>`;
@@ -761,6 +779,9 @@ async function handleLoginSubmit(event) {
     const usernameInput = document.getElementById("login-username").value.trim();
     const passwordInput = document.getElementById("login-password").value;
 
+    const errorContainer = document.getElementById("login-error-container");
+    if (errorContainer) errorContainer.style.display = "none";
+
     const btn = document.getElementById("btn-login");
     if (btn) { btn.disabled = true; btn.innerHTML = `<span>Signing In...</span>`; }
 
@@ -801,6 +822,14 @@ async function handleLoginSubmit(event) {
         }
     } catch (error) {
         console.error("Login failed:", error);
+        if (errorContainer) {
+            const errorText = document.getElementById("login-error-text");
+            if (errorText) {
+                errorText.textContent = error.message;
+                errorContainer.style.display = "flex";
+                lucide.createIcons();
+            }
+        }
         showToast(`Login failed: ${error.message}`);
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = `<span>Sign In to Console</span>`; }

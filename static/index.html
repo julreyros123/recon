@@ -1044,6 +1044,10 @@
                 <p>Network Device Identity &amp; Tracking Console</p>
             </div>
             <form id="form-login" onsubmit="handleLoginSubmit(event)">
+                <div id="login-error-container" style="display: none; background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: var(--border-radius-md); padding: 10px 12px; margin-bottom: 16px; color: #dc2626; font-size: 13px; font-weight: 500; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="alert-circle" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+                    <span id="login-error-text"></span>
+                </div>
                 <div class="form-group">
                     <label for="login-username">Username</label>
                     <div class="input-wrapper">
@@ -1134,7 +1138,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=11"></script>
+    <script src="/static/js/app.js?v=12"></script>
 </body>
 
 </html>
