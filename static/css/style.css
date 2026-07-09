@@ -468,7 +468,7 @@ body {
 
 .actions-col {
     text-align: right;
-    width: 150px;
+    width: 80px;
 }
 
 .actions-cell {
@@ -3133,22 +3133,20 @@ tr:hover .device-type-icon-wrapper {
     background: none;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm, 6px);
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: var(--color-text-muted);
     cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0.6;
     transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 tbody tr:hover .btn-dropdown-trigger,
 .dropdown-actions.active .btn-dropdown-trigger {
     opacity: 1;
-    pointer-events: auto;
 }
 
 .btn-dropdown-trigger:hover {
