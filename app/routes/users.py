@@ -113,15 +113,39 @@ def login(
         INVALID_CREDS = HTTPException(status_code=400, detail="Invalid username or password")
 
         if not row:
+            log_audit_event(
+                username=credentials.username,
+                role="unknown",
+                action="AUTH",
+                target="system",
+                ip_address=client_ip,
+                details=f"Failed login attempt: username does not exist ({credentials.username})"
+            )
             raise INVALID_CREDS
 
         if not row["is_active"]:
+            log_audit_event(
+                username=credentials.username,
+                role=row["role"],
+                action="AUTH",
+                target="system",
+                ip_address=client_ip,
+                details=f"Failed login attempt: account is disabled ({credentials.username})"
+            )
             raise HTTPException(status_code=403, detail="Account is disabled. Contact your administrator.")
 
         if is_account_locked(row):
+            log_audit_event(
+                username=credentials.username,
+                role=row["role"],
+                action="AUTH",
+                target="system",
+                ip_address=client_ip,
+                details=f"Failed login attempt: account is locked ({credentials.username})"
+            )
             raise HTTPException(
                 status_code=429,
-                detail=f"Account temporarily locked due to too many failed attempts. Try again in {15} minutes."
+                detail="Account temporarily locked due to too many failed attempts. Try again in 15 minutes."
             )
 
         allowed_ip = row["allowed_ip"] if "allowed_ip" in row.keys() else "*"
@@ -146,10 +170,26 @@ def login(
             attempts = increment_login_attempts(conn, row["id"])
             remaining = max(0, 5 - attempts)
             if remaining == 0:
+                log_audit_event(
+                    username=credentials.username,
+                    role=row["role"],
+                    action="AUTH",
+                    target="system",
+                    ip_address=client_ip,
+                    details=f"Account locked: 5 consecutive failed login attempts reached for {credentials.username}."
+                )
                 raise HTTPException(
                     status_code=429,
                     detail="Account locked for 15 minutes due to 5 failed login attempts."
                 )
+            log_audit_event(
+                username=credentials.username,
+                role=row["role"],
+                action="AUTH",
+                target="system",
+                ip_address=client_ip,
+                details=f"Failed login attempt: incorrect password for {credentials.username}. Attempts remaining: {remaining}."
+            )
             raise INVALID_CREDS
 
         reset_login_attempts(conn, row["id"])
