@@ -2596,27 +2596,107 @@ async function deleteWorkspace(wsId) {
     }
 }
 
+let activeWorkspaceId = null;
+
 async function openAddDeviceToWorkspace(wsId) {
-    // Prompt user to select from known devices
-    const deviceList = devicesState.map((d, i) => `${i + 1}. ${d.hostname || d.ip} (${d.ip})`).join('\n');
-    const input = prompt(`Enter the number of the device to add to workspace:\n${deviceList}`);
-    if (!input) return;
-    const idx = parseInt(input) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= devicesState.length) {
-        showToast('Invalid selection');
+    activeWorkspaceId = wsId;
+    
+    // Clear search input
+    const searchInput = document.getElementById('ws-device-search');
+    if (searchInput) searchInput.value = '';
+    
+    // Render list
+    renderWorkspaceDeviceList();
+    
+    // Open modal
+    openModal('modal-add-workspace-device');
+}
+
+function filterWorkspaceDevices() {
+    const query = document.getElementById('ws-device-search')?.value || '';
+    renderWorkspaceDeviceList(query);
+}
+
+function renderWorkspaceDeviceList(query = '') {
+    const listContainer = document.getElementById('ws-device-list');
+    if (!listContainer) return;
+
+    if (!devicesState || devicesState.length === 0) {
+        listContainer.innerHTML = '<div class="ws-device-list-empty">No discovered devices available.</div>';
         return;
     }
-    const device = devicesState[idx];
+
+    // Find the current workspace to identify its devices
+    const currentWorkspace = workspacesState.find(w => w.id === activeWorkspaceId);
+    const currentWorkspaceDeviceIds = new Set((currentWorkspace?.devices || []).map(d => d.id));
+
+    // Map device IDs to other workspaces
+    const otherWorkspacesMap = {};
+    workspacesState.forEach(ws => {
+        if (ws.id !== activeWorkspaceId) {
+            (ws.devices || []).forEach(d => {
+                otherWorkspacesMap[d.id] = ws.name;
+            });
+        }
+    });
+
+    const lowerQuery = query.toLowerCase().trim();
+
+    // Filter and map devices
+    const filtered = devicesState.filter(d => {
+        // Exclude devices already in the target workspace
+        if (currentWorkspaceDeviceIds.has(d.id)) return false;
+
+        // Apply search query filter
+        if (lowerQuery) {
+            const host = (d.hostname || '').toLowerCase();
+            const ip = (d.ip || '').toLowerCase();
+            const vendor = (d.vendor || '').toLowerCase();
+            return host.includes(lowerQuery) || ip.includes(lowerQuery) || vendor.includes(lowerQuery);
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = '<div class="ws-device-list-empty">No matching devices found.</div>';
+        return;
+    }
+
+    listContainer.innerHTML = filtered.map(d => {
+        const assignedWS = otherWorkspacesMap[d.id];
+        let actionLabel = 'Assign';
+        let subtext = d.vendor || 'Unknown Vendor';
+        
+        if (assignedWS) {
+            actionLabel = 'Reassign';
+            subtext = `${subtext} • Currently in ${assignedWS}`;
+        }
+
+        return `
+            <div class="device-select-item" onclick="addDeviceToWorkspace(${d.id})">
+                <div class="device-select-info">
+                    <span class="device-select-host">${d.hostname || 'Unknown Host'}</span>
+                    <span class="device-select-ip">${d.ip} • ${subtext}</span>
+                </div>
+                <span class="device-select-action">${actionLabel}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+async function addDeviceToWorkspace(deviceId) {
+    if (!activeWorkspaceId) return;
 
     try {
-        const response = await fetch(`/api/workspaces/${wsId}/add-device/${device.id}`, {
+        const response = await fetch(`/api/workspaces/${activeWorkspaceId}/add-device/${deviceId}`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
         if (handleApiError(response)) return;
         if (!response.ok) throw new Error('Failed to add device');
 
-        showToast(`Device '${device.hostname || device.ip}' added to workspace.`);
+        showToast('Device successfully assigned to workspace.');
+        closeModal('modal-add-workspace-device');
         fetchWorkspaces();
         fetchAuditLogs();
     } catch (error) {

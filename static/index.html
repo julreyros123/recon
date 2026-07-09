@@ -1068,6 +1068,27 @@
         </div>
     </div>
 
+    <!-- Add Device to Workspace Modal -->
+    <div class="modal-overlay" id="modal-add-workspace-device">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Add Device to Workspace</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-add-workspace-device')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ws-search-box-wrapper" style="margin-bottom: 16px;">
+                    <input type="text" id="ws-device-search" placeholder="Filter devices by IP, hostname, or vendor..." oninput="filterWorkspaceDevices()" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-md); font-size: 14px; outline: none; background: #fff;">
+                </div>
+                <div class="device-selection-list" id="ws-device-list">
+                    <!-- Dynamic selectable list of devices will load here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-tertiary" onclick="closeModal('modal-add-workspace-device')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Action Button (FAB) for Policies -->
     <button class="policy-fab" onclick="openModal('modal-policy')" title="View Security Policies">
         <i data-lucide="shield-check"></i>
@@ -1113,7 +1134,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=9"></script>
+    <script src="/static/js/app.js?v=10"></script>
 </body>
 
 </html>

@@ -3242,3 +3242,71 @@ tbody tr:hover .btn-dropdown-trigger,
 .dropdown-menu-content .btn-danger-text:hover {
     background-color: #fef2f2;
 }
+
+/* ==========================================
+   Workspace Device Selection List Modal
+========================================== */
+.device-selection-list {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    background-color: var(--gray-50);
+}
+
+.device-select-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.device-select-item:last-child {
+    border-bottom: none;
+}
+
+.device-select-item:hover {
+    background-color: var(--gray-100);
+}
+
+.device-select-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.device-select-host {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.device-select-ip {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.device-select-action {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2563eb;
+    background-color: #eff6ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.device-select-item:hover .device-select-action {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.ws-device-list-empty {
+    padding: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
