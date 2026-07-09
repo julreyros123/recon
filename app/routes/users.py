@@ -243,7 +243,7 @@ def verify_pin(
     conn: sqlite3.Connection = Depends(get_db)
 ):
     if current_user.get("role") != "super_admin":
-        raise HTTPException(status_code=403, detail="PIN verification is only required for Super Admin accounts")
+        raise HTTPException(status_code=403, detail="PIN verification is only required for System Administrator accounts")
 
     try:
         cursor = conn.cursor()
@@ -281,7 +281,7 @@ def verify_pin(
             action="AUTH",
             target="system",
             ip_address=get_client_ip(request),
-            details=f"Super Admin PIN verified for {current_user['username']}"
+            details=f"System Administrator PIN verified for {current_user['username']}"
         )
 
         return {"access_token": token, "token_type": "bearer", "pin_verified": True}
@@ -321,7 +321,7 @@ def set_pin(
             action="POLICY",
             target=current_user["username"],
             ip_address=get_client_ip(request),
-            details=f"Super Admin security PIN updated for {current_user['username']}"
+            details=f"System Administrator security PIN updated for {current_user['username']}"
         )
         return {"status": "success", "message": "Security PIN updated successfully"}
     finally:

@@ -183,7 +183,7 @@ function updateSidebarUserInfo() {
     if (nameEl) nameEl.textContent = displayName;
     if (roleEl) {
         const cleanRoleMap = {
-            'super_admin': 'Network Admin',
+            'super_admin': 'System Admin',
             'operator': 'Security Officer',
             'Staff': 'Staff Member',
             'user': 'Staff Member'
@@ -505,10 +505,10 @@ function renderUsers(users) {
         'administrator': 'badge-active',   // legacy compat
     };
     const roleLabelMap = {
-        'super_admin': 'Network Administrator',
+        'super_admin': 'System Administrator',
         'operator': 'IT Security Officer',
-        'user': 'Department Staff',
-        'administrator': 'Network Administrator',   // legacy
+        'user': 'Staff Member',
+        'administrator': 'System Administrator',   // legacy
     };
 
     listBody.innerHTML = users.map(user => {
@@ -818,13 +818,13 @@ async function handleLoginSubmit(event) {
         sessionStorage.setItem("currentRole", currentRole);
         sessionStorage.setItem("currentFullName", currentFullName);
 
-        // Network administrator PIN gate
+        // System administrator PIN gate
         if (data.pin_required) {
             const loginOverlay = document.getElementById("login-overlay");
             if (loginOverlay) loginOverlay.classList.remove("active");
             openModal('modal-pin-verify');
             setTimeout(() => document.getElementById('pin-d1')?.focus(), 100);
-            showToast(`Password verified. Enter your Network Administrator security PIN.`);
+            showToast(`Password verified. Enter your System Administrator security PIN.`);
         } else {
             showToast(`Access granted. Welcome, ${currentFullName}.`);
             initApp();
