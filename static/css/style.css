@@ -58,6 +58,31 @@ body {
     height: 100vh;
 }
 
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
+/* Firefox scrollbars */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray-300) transparent;
+}
+
 /* App Container */
 .app-container {
     display: flex;
