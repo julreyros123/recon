@@ -3339,15 +3339,25 @@ tbody tr:hover .btn-dropdown-trigger,
     background-color: var(--gray-100);
 }
 
-.tree-zone-toggle svg {
+.tree-zone-toggle .tree-zone-chevron {
     width: 12px;
     height: 12px;
     color: var(--color-text-light);
     transition: transform 0.2s ease;
+    display: inline-flex;
+    align-items: center;
 }
 
-.tree-zone-toggle.collapsed svg {
+.tree-zone-toggle.collapsed .tree-zone-chevron {
     transform: rotate(-90deg);
+}
+
+.tree-zone-toggle .tree-zone-folder {
+    width: 13px;
+    height: 13px;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
 }
 
 .tree-trunk-container {

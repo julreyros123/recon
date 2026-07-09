@@ -2939,10 +2939,9 @@ async function loadDynamicNetworkTree() {
                 <div class="tree-zone-wrapper">
                     <!-- Collapsible Zone Trigger -->
                     <button onclick="toggleTree('${treeId}', this)" class="tree-zone-toggle">
-                        <svg class="transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                        📁 ${areaName}
+                        <i data-lucide="chevron-down" class="tree-zone-chevron"></i>
+                        <i data-lucide="folder" class="tree-zone-folder"></i>
+                        <span>${areaName}</span>
                     </button>
 
                     <!-- Tree Content Trunk -->
