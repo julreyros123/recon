@@ -88,8 +88,8 @@ def create_device(device: DeviceCreate, current_user: dict = Depends(RoleChecker
     date_reg = device.date_registered or (datetime.datetime.now(datetime.timezone.utc) if device.is_trusted else None)
     try:
         cursor.execute(
-            "INSERT INTO devices (ip, mac, hostname, vendor, status, open_ports, os_type, is_trusted, owner_name, department, purpose, trust_level, registered_by, date_registered) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (device.ip, device.mac, device.hostname, device.vendor, device.status, device.open_ports, device.os_type, int(device.is_trusted), device.owner_name, device.department, device.purpose, trust_lvl, registered_by, date_reg)
+            "INSERT INTO devices (ip, mac, hostname, vendor, model, status, open_ports, os_type, is_trusted, owner_name, department, purpose, trust_level, registered_by, date_registered) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (device.ip, device.mac, device.hostname, device.vendor, device.model, device.status, device.open_ports, device.os_type, int(device.is_trusted), device.owner_name, device.department, device.purpose, trust_lvl, registered_by, date_reg)
         )
         db.commit()
         device_id = cursor.lastrowid

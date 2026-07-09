@@ -377,7 +377,6 @@ function renderDevices(devices) {
 
     categories.forEach(cat => {
         const catDevices = grouped[cat.key];
-        if (catDevices.length === 0) return;
 
         // Render Divider Header for this group
         finalHtml += `
@@ -390,6 +389,18 @@ function renderDevices(devices) {
                 </td>
             </tr>
         `;
+
+        if (catDevices.length === 0) {
+            // Render an empty state row placeholder for this category
+            finalHtml += `
+                <tr class="empty-group-row opacity-60">
+                    <td colspan="8" style="padding: 12px; text-align: center; font-size: 11px; font-style: italic; color: var(--color-text-light); background-color: rgba(248, 250, 252, 0.3);">
+                        No registered devices under this category.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
         // Render devices inside this group
         finalHtml += catDevices.map(dev => {
@@ -514,7 +525,10 @@ function renderDevices(devices) {
                         <div><code class="code-ip">${dev.ip}</code></div>
                         <div><code class="code-mac" style="font-size: 11px; color: var(--color-text-muted);">${dev.mac || 'N/A'}</code></div>
                     </td>
-                    <td>${dev.vendor || 'Unknown Brand'}</td>
+                    <td>
+                        <div class="text-xs font-bold text-slate-800">${dev.vendor || 'Unknown Brand'}</div>
+                        ${dev.model ? `<div class="text-[10px] text-slate-500 mt-0.5">${dev.model}</div>` : ''}
+                    </td>
                     <td>
                         <div style="margin-bottom: 4px;">${trustLevelHtml}</div>
                         <div>${patchHtml}</div>
@@ -1014,6 +1028,7 @@ async function saveDevice(event) {
         mac: document.getElementById("device-mac").value.trim() || null,
         hostname: document.getElementById("device-hostname").value.trim() || null,
         vendor: document.getElementById("device-vendor").value.trim() || null,
+        model: document.getElementById("device-model").value.trim() || null,
         status: document.getElementById("device-status").value,
         os_type: document.getElementById("device-type").value,
         owner_name: document.getElementById("device-owner").value.trim() || null,
@@ -1072,6 +1087,7 @@ function editDevice(deviceBase64) {
     document.getElementById("device-mac").value = dev.mac || "";
     document.getElementById("device-hostname").value = dev.hostname || "";
     document.getElementById("device-vendor").value = dev.vendor || "";
+    document.getElementById("device-model").value = dev.model || "";
     document.getElementById("device-status").value = dev.status;
     document.getElementById("device-type").value = dev.os_type || "generic";
     document.getElementById("device-owner").value = dev.owner_name || "";
