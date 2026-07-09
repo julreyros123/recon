@@ -33,10 +33,35 @@
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </button>
-                <button class="nav-item active" id="btn-nav-devices" onclick="switchTab('devices')">
-                    <i data-lucide="activity"></i>
-                    <span>Devices</span>
-                </button>
+                <div class="nav-group">
+                    <button class="nav-item active has-submenu" id="btn-nav-devices" onclick="toggleSubmenu('devices-submenu'); switchDevicesFilter('', this);">
+                        <i data-lucide="activity"></i>
+                        <span>Devices</span>
+                        <i data-lucide="chevron-down" class="submenu-chevron"></i>
+                    </button>
+                    <div class="nav-submenu" id="devices-submenu" style="display:none;">
+                        <button class="nav-item sub-item active" id="btn-sub-devices-all" onclick="switchDevicesFilter('', this); event.stopPropagation();">
+                            <i data-lucide="list"></i>
+                            <span>All Devices</span>
+                        </button>
+                        <button class="nav-item sub-item" id="btn-sub-devices-server" onclick="switchDevicesFilter('server', this); event.stopPropagation();">
+                            <i data-lucide="server"></i>
+                            <span>Servers</span>
+                        </button>
+                        <button class="nav-item sub-item" id="btn-sub-devices-workstation" onclick="switchDevicesFilter('workstation', this); event.stopPropagation();">
+                            <i data-lucide="monitor"></i>
+                            <span>Workstations</span>
+                        </button>
+                        <button class="nav-item sub-item" id="btn-sub-devices-router" onclick="switchDevicesFilter('router', this); event.stopPropagation();">
+                            <i data-lucide="wifi"></i>
+                            <span>Routers / Gateways</span>
+                        </button>
+                        <button class="nav-item sub-item" id="btn-sub-devices-printer" onclick="switchDevicesFilter('printer', this); event.stopPropagation();">
+                            <i data-lucide="printer"></i>
+                            <span>Printers</span>
+                        </button>
+                    </div>
+                </div>
                 <div class="nav-group">
                     <button class="nav-item has-submenu" id="btn-nav-workstations-group" onclick="toggleSubmenu('workstations-submenu')">
                         <i data-lucide="monitor"></i>
@@ -1143,7 +1168,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=18"></script>
+    <script src="/static/js/app.js?v=19"></script>
 </body>
 
 </html>

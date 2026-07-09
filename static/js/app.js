@@ -1411,6 +1411,21 @@ function viewPorts(deviceBase64) {
     document.getElementById("modal-ports").classList.add("active");
 }
 
+function switchDevicesFilter(type, element) {
+    switchTab('devices');
+    const typeSelect = document.getElementById("device-type-filter");
+    if (typeSelect) {
+        typeSelect.value = type;
+        filterDevices();
+    }
+    
+    // Manage active state of sub-items
+    document.querySelectorAll(".nav-submenu .sub-item").forEach(item => item.classList.remove("active"));
+    if (element) {
+        element.classList.add("active");
+    }
+}
+
 // Local Search Filters, Sorting, and Export inside Devices tab
 function filterDevices() {
     const query = (document.getElementById("search-devices")?.value || "").toLowerCase().trim();
