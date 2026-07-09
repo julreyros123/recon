@@ -49,9 +49,15 @@ class PinVerify(BaseModel):
     @classmethod
     def check_pin(cls, v):
         import re
-        if not re.match(r"^\d{6}$", str(v)):
+        import base64
+        provided = str(v)
+        try:
+            provided = base64.b64decode(provided).decode("utf-8")
+        except Exception:
+            pass
+        if not re.match(r"^\d{6}$", provided):
             raise ValueError("PIN must be exactly 6 digits")
-        return v
+        return provided
 
 class PinSet(BaseModel):
     current_password: str
@@ -61,9 +67,15 @@ class PinSet(BaseModel):
     @classmethod
     def check_pin(cls, v):
         import re
-        if not re.match(r"^\d{6}$", str(v)):
+        import base64
+        provided = str(v)
+        try:
+            provided = base64.b64decode(provided).decode("utf-8")
+        except Exception:
+            pass
+        if not re.match(r"^\d{6}$", provided):
             raise ValueError("PIN must be exactly 6 digits")
-        return v
+        return provided
 
 class ChangePassword(BaseModel):
     current_password: str
