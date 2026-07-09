@@ -823,6 +823,9 @@ async function submitPin() {
 
     if (pin.length < 6) { showToast('Please enter all 6 digits.'); return; }
 
+    // Clear PIN inputs from the DOM immediately for security
+    document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
+
     const btn = document.getElementById('btn-submit-pin');
     if (btn) btn.disabled = true;
 
@@ -830,7 +833,7 @@ async function submitPin() {
         const response = await fetch('/api/users/verify-pin', {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ pin })
+            body: JSON.stringify({ pin: btoa(pin) })
         });
 
         if (!response.ok) {

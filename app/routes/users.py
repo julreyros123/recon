@@ -200,7 +200,14 @@ def verify_pin(
         if not row or not row["super_admin_pin_hash"]:
             raise HTTPException(status_code=400, detail="No PIN configured for this account")
 
-        if not verify_password(pin_data.pin, row["super_admin_pin_hash"]):
+        provided_pin = pin_data.pin
+        try:
+            import base64
+            provided_pin = base64.b64decode(pin_data.pin).decode("utf-8")
+        except Exception:
+            provided_pin = pin_data.pin
+
+        if not verify_password(provided_pin, row["super_admin_pin_hash"]):
             raise HTTPException(status_code=400, detail="Invalid PIN")
 
         fn = current_user.get("full_name", current_user["username"])
@@ -244,7 +251,14 @@ def set_pin(
         if not row or not verify_password(pin_data.current_password, row["password_hash"]):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-        pin_hash = hash_password(pin_data.pin)
+        new_pin = pin_data.pin
+        try:
+            import base64
+            new_pin = base64.b64decode(pin_data.pin).decode("utf-8")
+        except Exception:
+            new_pin = pin_data.pin
+
+        pin_hash = hash_password(new_pin)
         cursor.execute("UPDATE users SET super_admin_pin_hash = ? WHERE username = ?",
                        (pin_hash, current_user["username"]))
         conn.commit()
