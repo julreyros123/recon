@@ -3057,32 +3057,51 @@ function connectStatusWebSocket() {
                 
                 // Construct a dense, high-contrast threat warning row matching clean layout parameters
                 const threatRowHTML = `
-                    <tr class="bg-red-50/40 hover:bg-red-50 transition border-b border-red-100 animate-pulse text-red-900" data-device-ip="${data.target_ip}">
-                        <td class="py-1.5 px-3 text-center">
-                            <span class="text-xs font-bold text-red-600">🚨</span>
+                    <tr class="bg-red-50/40 hover:bg-red-50/60 transition border-b border-red-100 animate-pulse text-slate-900" data-device-ip="${data.target_ip}">
+                        <!-- 1. Icon Column (Matches col-type) -->
+                        <td class="py-2 px-3 text-center align-middle w-10">
+                            <span class="text-sm">🚨</span>
                         </td>
-                        <td class="py-1.5 px-3">
-                            <span class="text-xs font-bold text-red-700 block">${data.message}</span>
-                            <span class="text-[11px] text-red-500 block leading-none mt-0.5">Asset verification profile validation failure</span>
+                        
+                        <!-- 2. Threat Details Column (Matches Hostname / Owner) -->
+                        <td class="py-2 px-4 align-middle max-w-xs">
+                            <span class="text-xs font-bold text-red-700 block leading-tight">${data.message}</span>
+                            <span class="text-[11px] text-slate-500 block leading-none mt-1">Asset verification profile validation failure</span>
                         </td>
-                        <td class="py-1.5 px-3">
-                            <span class="text-xs font-bold block">${data.target_ip}</span>
-                            <span class="text-[10px] font-mono text-red-500 block leading-none">BAD: ${data.spoofed_mac}</span>
+                        
+                        <!-- 3. Address / Target Artifacts Column (Matches Network Address) -->
+                        <td class="py-2 px-4 align-middle">
+                            <span class="text-xs font-bold text-slate-800 block">${data.target_ip}</span>
+                            <span class="text-[10px] font-mono text-red-600 bg-red-50 px-1 py-0.5 rounded inline-block mt-0.5 font-semibold">BAD: ${data.spoofed_mac}</span>
                         </td>
-                        <td class="py-1.5 px-3 text-xs font-mono text-gray-500">
-                            <div>Expected:</div>
-                            <div class="text-[10px] text-gray-400">${data.expected_mac}</div>
+                        
+                        <!-- 4. Expected Target Baseline Column (Matches Vendor) -->
+                        <td class="py-2 px-4 align-middle">
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Expected Baseline</span>
+                            <span class="text-[11px] font-mono text-slate-600 block mt-0.5">${data.expected_mac}</span>
                         </td>
-                        <td class="py-1.5 px-3">
-                            <span class="inline-block px-1.5 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded shadow-xs leading-none">HIGH THREAT</span>
+                        
+                        <!-- 5. Security Severity State Badge Column (Matches Security State) -->
+                        <td class="py-2 px-4 align-middle">
+                            <span class="inline-block px-2 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded-md tracking-wide shadow-2xs leading-none">HIGH THREAT</span>
                         </td>
-                        <td class="py-1.5 px-3">
+                        
+                        <!-- 6. Open Ports Column (Matches Open Ports) -->
+                        <td class="py-2 px-4 align-middle text-slate-400 text-xs">—</td>
+                        
+                        <!-- 7. Event Logging Timestamp Column (Matches Last Seen) -->
+                        <td class="py-2 px-4 align-middle text-left text-[11px] font-mono text-slate-500 whitespace-nowrap">
+                            <div>${currentTimestamp.split(' ')[0]}</div>
+                            <div class="text-slate-400 text-[10px] mt-0.5">${currentTimestamp.split(' ')[1]}</div>
+                        </td>
+
+                        <!-- 8. Action Button Column (Matches Actions) -->
+                        <td class="actions-col py-2 px-4 align-middle text-right">
                             <button onclick="requestNodeIsolation('${data.target_ip}', this)" 
-                                    class="h-6 text-[10px] font-extrabold px-2 bg-red-700 text-white rounded hover:bg-red-800 uppercase tracking-tight shadow-xs transition-colors">
+                                    class="h-7 text-[10px] font-bold px-2.5 bg-red-700 hover:bg-red-800 text-white rounded-md uppercase tracking-wide shadow-sm transition-colors active:scale-95 cursor-pointer">
                                 Isolate Node
                             </button>
                         </td>
-                        <td class="py-1.5 px-3 text-xs font-mono text-gray-500">${currentTimestamp}</td>
                     </tr>
                 `;
                 
