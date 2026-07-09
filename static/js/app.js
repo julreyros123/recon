@@ -573,13 +573,13 @@ function renderAuditLogs(logs) {
     if (!listBody) return;
 
     if (logs === null) {
-        listBody.innerHTML = `<tr><td colspan="6" class="audit-empty" style="color: var(--color-error); font-weight: 500; text-align: center; padding: 24px;"><i data-lucide="shield-alert" class="icon-blocked" style="vertical-align: middle; margin-right: 6px; width: 18px; height: 18px;"></i> Access Denied: Insufficient privileges.</td></tr>`;
+        listBody.innerHTML = `<tr><td colspan="7" class="audit-empty" style="color: var(--color-error); font-weight: 500; text-align: center; padding: 24px;"><i data-lucide="shield-alert" class="icon-blocked" style="vertical-align: middle; margin-right: 6px; width: 18px; height: 18px;"></i> Access Denied: Insufficient privileges.</td></tr>`;
         lucide.createIcons();
         return;
     }
 
     if (logs.length === 0) {
-        listBody.innerHTML = `<tr><td colspan="6" class="audit-empty">No audit events tracked yet.</td></tr>`;
+        listBody.innerHTML = `<tr><td colspan="7" class="audit-empty">No audit events tracked yet.</td></tr>`;
         return;
     }
 
@@ -597,6 +597,7 @@ function renderAuditLogs(logs) {
                 <td class="audit-username">${log.username || 'system'}</td>
                 <td><span class="badge badge-role audit-role">${log.role || 'system'}</span></td>
                 <td><span class="badge ${actionBadge}">${log.action}</span></td>
+                <td><code class="code-ip">${log.ip_address || 'N/A'}</code></td>
                 <td><code class="audit-target">${log.target || 'N/A'}</code></td>
                 <td class="audit-details">${log.details || 'N/A'}</td>
             </tr>
