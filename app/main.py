@@ -146,28 +146,88 @@ async def get_infrastructure_tree():
     }
     return network_map
 
+# Simulated system-wide tracker tracking nodes that have been administratively isolated
+ISOLATED_DEVICE_IPS = set()
+
+# Simulated database baseline of trusted hardware addresses mapping to network IPs
+TRUSTED_DEVICE_REGISTRY = {
+    "192.168.8.101": "E4:55:A8:0D:C7:FE",
+    "192.168.8.102": "A1:2B:C3:4D:5E:6F"
+}
+
 @app.websocket("/ws/infrastructure/status")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
-        while True:
-            await asyncio.sleep(4)
-            status_update = {
-                "target_ip": "192.168.8.101",
-                "status": "offline",
-                "traffic_rate": "0 Kbps"
-            }
-            await websocket.send_text(json.dumps(status_update))
+        # Create a concurrent background worker task loop to handle incoming data frames from client
+        async def receive_handler():
+            try:
+                while True:
+                    client_msg = await websocket.receive_text()
+                    payload = json.loads(client_msg)
+                    
+                    if payload.get("action") == "ISOLATE_NODE":
+                        target_ip = payload.get("target_ip")
+                        print(f"[SECURITY ENFORCEMENT] Isolating target node IP: {target_ip}")
+                        ISOLATED_DEVICE_IPS.add(target_ip)
+                        
+                        mitigation_update = {
+                            "event_type": "NODE_ISOLATION_CONFIRMED",
+                            "target_ip": target_ip,
+                            "message": f"SUCCESS: Device {target_ip} quarantined from packet routing matrix."
+                        }
+                        await websocket.send_text(json.dumps(mitigation_update))
+            except Exception as e:
+                print(f"Receive loop pipeline error encountered: {e}")
+
+        # Start client listener loop asynchronously 
+        receive_task = asyncio.create_task(receive_handler())
+
+        # Main alert generator processing loop (Simulation logic)
+        try:
+            # We first sleep a bit, then trigger a MAC spoofing alert for demonstration
+            await asyncio.sleep(5)
             
-            await asyncio.sleep(4)
-            status_update = {
-                "target_ip": "192.168.8.101",
-                "status": "high-traffic",
-                "traffic_rate": "847 Mbps"
-            }
-            await websocket.send_text(json.dumps(status_update))
+            scanned_ip = "192.168.8.101"
+            detected_mac = "99:99:99:AA:BB:CC" # Does not match expected MAC
+            
+            if scanned_ip in TRUSTED_DEVICE_REGISTRY and scanned_ip not in ISOLATED_DEVICE_IPS:
+                expected_mac = TRUSTED_DEVICE_REGISTRY[scanned_ip]
+                if detected_mac != expected_mac:
+                    threat_alert = {
+                        "event_type": "MAC_SPOOFING_ALERT",
+                        "target_ip": scanned_ip,
+                        "severity": "CRITICAL",
+                        "expected_mac": expected_mac,
+                        "spoofed_mac": detected_mac,
+                        "message": "CRITICAL THREAT: IP Conflict / ARP Spoofing Detected!"
+                    }
+                    await websocket.send_text(json.dumps(threat_alert))
+            
+            while True:
+                # Keep emitting standard infrastructure updates if they are not isolated
+                await asyncio.sleep(4)
+                if "192.168.8.101" not in ISOLATED_DEVICE_IPS:
+                    status_update = {
+                        "target_ip": "192.168.8.101",
+                        "status": "offline",
+                        "traffic_rate": "0 Kbps"
+                    }
+                    await websocket.send_text(json.dumps(status_update))
+                
+                await asyncio.sleep(4)
+                if "192.168.8.101" not in ISOLATED_DEVICE_IPS:
+                    status_update = {
+                        "target_ip": "192.168.8.101",
+                        "status": "high-traffic",
+                        "traffic_rate": "847 Mbps"
+                    }
+                    await websocket.send_text(json.dumps(status_update))
+        finally:
+            receive_task.cancel()
+            
     except WebSocketDisconnect:
-        print("Client dashboard connection closed cleanly.")
+        print("Quarantine listener endpoint socket dropped cleanly.")
 
 # Core API routers
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])

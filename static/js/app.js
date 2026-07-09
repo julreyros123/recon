@@ -3026,6 +3026,71 @@ function connectStatusWebSocket() {
     infrastructureStatusSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
+        // Catch-all response filter intercepting backend isolation acknowledgments
+        if (data.event_type === "NODE_ISOLATION_CONFIRMED") {
+            applyFrontendNodeQuarantine(data.target_ip);
+            return;
+        }
+        
+        if (data.event_type === "MAC_SPOOFING_ALERT") {
+            // 1. FLASH SIDEBAR INFRASTRUCTURE TREE ITEM
+            const targetNode = document.querySelector(`[data-node-ip="${data.target_ip}"]`);
+            if (targetNode) {
+                const badge = targetNode.querySelector('.node-status-dot');
+                const hostnameLabel = targetNode.querySelector('.target-hostname-label');
+                
+                if (badge) {
+                    badge.className = "node-status-dot absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-600 border border-white animate-ping";
+                }
+                if (hostnameLabel) {
+                    hostnameLabel.classList.add("text-red-600", "font-bold");
+                    if (!hostnameLabel.innerText.includes("[!]")) {
+                        hostnameLabel.innerText = `${hostnameLabel.innerText} [!]`;
+                    }
+                }
+            }
+
+            // 2. INJECT A LIVE HIGH-SEVERITY THREAT ENTRY INTO THE CENTRAL MATRIX LOG TABLE
+            const tableBody = document.getElementById("devices-list-body");
+            if (tableBody) {
+                const currentTimestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                
+                // Construct a dense, high-contrast threat warning row matching clean layout parameters
+                const threatRowHTML = `
+                    <tr class="bg-red-50/40 hover:bg-red-50 transition border-b border-red-100 animate-pulse text-red-900" data-device-ip="${data.target_ip}">
+                        <td class="py-1.5 px-3 text-center">
+                            <span class="text-xs font-bold text-red-600">🚨</span>
+                        </td>
+                        <td class="py-1.5 px-3">
+                            <span class="text-xs font-bold text-red-700 block">${data.message}</span>
+                            <span class="text-[11px] text-red-500 block leading-none mt-0.5">Asset verification profile validation failure</span>
+                        </td>
+                        <td class="py-1.5 px-3">
+                            <span class="text-xs font-bold block">${data.target_ip}</span>
+                            <span class="text-[10px] font-mono text-red-500 block leading-none">BAD: ${data.spoofed_mac}</span>
+                        </td>
+                        <td class="py-1.5 px-3 text-xs font-mono text-gray-500">
+                            <div>Expected:</div>
+                            <div class="text-[10px] text-gray-400">${data.expected_mac}</div>
+                        </td>
+                        <td class="py-1.5 px-3">
+                            <span class="inline-block px-1.5 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded shadow-xs leading-none">HIGH THREAT</span>
+                        </td>
+                        <td class="py-1.5 px-3">
+                            <button onclick="requestNodeIsolation('${data.target_ip}', this)" 
+                                    class="h-6 text-[10px] font-extrabold px-2 bg-red-700 text-white rounded hover:bg-red-800 uppercase tracking-tight shadow-xs transition-colors">
+                                Isolate Node
+                            </button>
+                        </td>
+                        <td class="py-1.5 px-3 text-xs font-mono text-gray-500">${currentTimestamp}</td>
+                    </tr>
+                `;
+                
+                tableBody.insertAdjacentHTML('afterbegin', threatRowHTML);
+            }
+            return;
+        }
+        
         const targetNode = document.querySelector(`[data-node-ip="${data.target_ip}"]`);
         if (!targetNode) return;
 
@@ -3070,6 +3135,60 @@ function connectStatusWebSocket() {
     infrastructureStatusSocket.onerror = (error) => {
         console.error("Infrastructure status WebSocket error:", error);
     };
+}
+
+// 1. DISPATCH ISOLATION INSTRUCTION PACKETS TO THE FASTAPI SERVER
+function requestNodeIsolation(ipAddress, buttonElement) {
+    if (!infrastructureStatusSocket || infrastructureStatusSocket.readyState !== WebSocket.OPEN) {
+        alert("Network Connection Error: Isolation payload transmission pipeline is offline.");
+        return;
+    }
+
+    // Update button visual state immediately to indicate ongoing system calculation work
+    buttonElement.disabled = true;
+    buttonElement.innerText = "Isolating...";
+    buttonElement.className = "h-6 text-[10px] font-bold px-2 bg-gray-400 text-white rounded cursor-not-allowed uppercase";
+
+    const isolationPayload = {
+        "action": "ISOLATE_NODE",
+        "target_ip": ipAddress
+    };
+
+    // Push serialized message down the WebSocket connection
+    infrastructureStatusSocket.send(JSON.stringify(isolationPayload));
+}
+
+// 2. MUTATE UI ELEMENTS GLOBALLY TO SHOW QUARANTINED STATE SUCCESS
+function applyFrontendNodeQuarantine(ipAddress) {
+    // Update Center Log Table Row Elements matching target IP parameters
+    const matchingTableRows = document.querySelectorAll(`tr[data-device-ip="${ipAddress}"]`);
+    matchingTableRows.forEach(row => {
+        // Remove red hazard alert flash animations and add grayed-out layout styles
+        row.classList.remove("bg-red-50/40", "animate-pulse");
+        row.classList.add("bg-slate-100", "opacity-40", "pointer-events-none", "line-through");
+        
+        // Swap button label to confirmed status text
+        const targetActionBtn = row.querySelector("button");
+        if (targetActionBtn) {
+            targetActionBtn.disabled = true;
+            targetActionBtn.innerText = "Quarantined";
+            targetActionBtn.className = "h-6 text-[10px] font-bold px-2 bg-gray-400 text-white rounded cursor-not-allowed uppercase";
+        }
+    });
+
+    // Update Left-Hand or Right-Hand Sidebar Network Tree indicators
+    const matchingTreeItem = document.querySelector(`[data-node-ip="${ipAddress}"]`);
+    if (matchingTreeItem) {
+        const statusDot = matchingTreeItem.querySelector('.node-status-dot');
+        const labelText = matchingTreeItem.querySelector('.target-hostname-label');
+        
+        if (statusDot) {
+            statusDot.className = "node-status-dot offline";
+        }
+        if (labelText) {
+            labelText.className = "text-[11px] font-medium text-gray-400 line-through target-hostname-label";
+        }
+    }
 }
 
 function filterTableByDevice(ipAddress, element) {
