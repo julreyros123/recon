@@ -13,7 +13,7 @@
     <script src="/static/js/lucide.min.js"></script>
     <!-- Chart.js -->
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=24">
+    <link rel="stylesheet" href="/static/css/style.css?v=25">
     <!-- Tailwind Play CDN with Preflight disabled to prevent styling conflicts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -626,26 +626,24 @@
                         </div>
                         
                         <!-- 3. ACTIONS PANEL: Functional Empty State Mitigation -->
-                        <div id="details-agent-missing-pane" style="display: none;" class="border border-dashed border-slate-200 rounded-xl p-8 bg-slate-50/50 text-center mt-6">
-                            <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-3 border border-amber-100">
+                        <div id="details-agent-missing-pane" style="display: none; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 32px; background-color: rgba(248,250,252,0.5); text-align: center; margin-top: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="width: 40px; height: 40px; background-color: #fef3c7; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; margin: 0 auto 12px auto; border: 1px solid #fde68a;">
                                 ⚠️
                             </div>
-                            <h3 class="text-sm font-bold text-slate-900">Deployment Agent Required</h3>
-                            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                            <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Deployment Agent Required</h3>
+                            <p style="font-size: 12px; color: #64748b; max-width: 380px; margin: 0 auto 20px auto; line-height: 1.6;">
                                 To stream core process telemetry spaces, network sockets, or active endpoints, provision the agent loop directly onto the destination asset host machine.
                             </p>
                             
                             <!-- Code Command Terminal Container Block -->
-                            <div class="mt-5 max-w-md mx-auto rounded-lg bg-slate-900 border border-slate-800 shadow-md overflow-hidden text-left">
-                                <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700/40 select-none">
-                                    <span class="text-[10px] font-mono text-slate-400">PowerShell / CMD</span>
-                                    <span class="text-[10px] font-sans font-semibold text-slate-500">Secure CLI Deployment</span>
+                            <div style="max-width: 440px; margin: 0 auto; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; text-align: left;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background-color: #1e293b; border-bottom: 1px solid rgba(51,65,85,0.4); user-select: none;">
+                                    <span style="font-family: monospace; font-size: 10px; color: #94a3b8;">PowerShell / CMD</span>
+                                    <span style="font-size: 10px; font-weight: 600; color: #475569; font-family: sans-serif;">Secure CLI Deployment</span>
                                 </div>
-                                <div class="p-3 flex items-center justify-between space-x-3">
-                                    <code id="cliString" class="font-mono text-xs text-emerald-400 break-all pr-2">
-                                        python workstation_agent.py --target 10.102.184.1
-                                    </code>
-                                    <button onclick="copyCliString()" class="px-2.5 py-1 text-[11px] font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:text-white rounded transition shadow-sm whitespace-nowrap">
+                                <div style="padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                                    <code id="cliString" style="font-family: monospace; font-size: 12px; color: #34d399; word-break: break-all; white-space: pre-wrap; flex-grow: 1; min-width: 200px;">python workstation_agent.py --target 10.102.184.1</code>
+                                    <button onclick="copyCliString()" style="padding: 6px 12px; font-size: 11px; font-weight: 700; color: #cbd5e1; background-color: #1e293b; border: 1px solid #334155; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">
                                         Copy
                                     </button>
                                 </div>
@@ -1226,7 +1224,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=23"></script>
+    <script src="/static/js/app.js?v=24"></script>
 </body>
 
 </html>
