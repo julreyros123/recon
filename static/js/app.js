@@ -1902,9 +1902,18 @@ async function fetchWorkstationDetailsTelemetry(id) {
 
         // Update header details
         document.getElementById("details-hostname").innerText = ws.hostname || "Unknown Workstation";
-        document.getElementById("details-os").innerText = data.latest ? (data.latest.os_info || "Unknown OS") : "Offline / Unmonitored";
         document.getElementById("details-ip").innerText = ws.ip;
         document.getElementById("details-mac").innerText = ws.mac || "N/A";
+
+        // Manage OS Badge State
+        const osBadge = document.getElementById("details-os-badge");
+        if (data.latest && data.latest.os_info) {
+            osBadge.innerText = `● Online / Monitored (${data.latest.os_info})`;
+            osBadge.className = "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold uppercase tracking-wider";
+        } else {
+            osBadge.innerText = "● Offline / Unmonitored";
+            osBadge.className = "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 font-bold uppercase tracking-wider";
+        }
 
         // Manage Isolation Button
         const isolationStatus = document.getElementById("details-isolation-status");
@@ -1920,6 +1929,23 @@ async function fetchWorkstationDetailsTelemetry(id) {
             }
         }
 
+        // Highlight matching right-hand network tree node
+        const allTreeNodes = document.querySelectorAll(".tree-node-item");
+        allTreeNodes.forEach(node => {
+            node.classList.remove("active-viewing");
+            const existingBadge = node.querySelector(".viewing-badge");
+            if (existingBadge) existingBadge.remove();
+        });
+
+        const matchingTreeNode = document.querySelector(`.tree-node-item[data-node-ip="${ws.ip}"]`);
+        if (matchingTreeNode) {
+            matchingTreeNode.classList.add("active-viewing");
+            const badgeSpan = document.createElement("span");
+            badgeSpan.className = "viewing-badge px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-600 text-white uppercase tracking-wider ml-auto flex-shrink-0";
+            badgeSpan.innerText = "Viewing";
+            matchingTreeNode.appendChild(badgeSpan);
+        }
+
         // If telemetry exists, populate resource gauges and tables
         if (data.has_telemetry && data.latest) {
             const cpu = data.latest.cpu_usage;
@@ -1929,16 +1955,24 @@ async function fetchWorkstationDetailsTelemetry(id) {
             document.getElementById("gauge-cpu-val").innerText = cpu.toFixed(1) + "%";
             document.getElementById("gauge-ram-val").innerText = ram.toFixed(1) + "%";
 
-            // Set progress bars
-            const cpuBar = document.getElementById("gauge-cpu-bar");
-            const ramBar = document.getElementById("gauge-ram-bar");
+            // Set circular gauges classes and text to ON
+            const cpuCircle = document.getElementById("gauge-cpu-circle-container");
+            const cpuText = document.getElementById("gauge-cpu-circle-text");
+            cpuCircle.className = "relative w-12 h-12 flex items-center justify-center rounded-full border-4 " + 
+                (cpu > 90 ? "border-red-500 bg-red-50 text-red-700" : (cpu > 70 ? "border-amber-500 bg-amber-50 text-amber-700" : "border-emerald-500 bg-emerald-50 text-emerald-700")) + " flex-shrink-0";
+            cpuText.innerText = "ON";
+            cpuText.className = "text-[10px] font-black";
 
-            cpuBar.style.width = cpu + "%";
-            ramBar.style.width = ram + "%";
+            const ramCircle = document.getElementById("gauge-ram-circle-container");
+            const ramText = document.getElementById("gauge-ram-circle-text");
+            ramCircle.className = "relative w-12 h-12 flex items-center justify-center rounded-full border-4 " + 
+                (ram > 90 ? "border-red-500 bg-red-50 text-red-700" : (ram > 70 ? "border-amber-500 bg-amber-50 text-amber-700" : "border-emerald-500 bg-emerald-50 text-emerald-700")) + " flex-shrink-0";
+            ramText.innerText = "ON";
+            ramText.className = "text-[10px] font-black";
 
-            // Manage color classes
-            cpuBar.className = "progress-bar " + (cpu > 90 ? "danger" : (cpu > 70 ? "warning" : ""));
-            ramBar.className = "progress-bar " + (ram > 90 ? "danger" : (ram > 70 ? "warning" : ""));
+            // Toggle panes visibility
+            document.getElementById("details-tabbed-container").style.display = "block";
+            document.getElementById("details-agent-missing-pane").style.display = "none";
 
             // Render specific tables
             renderProcessesList(data.latest.running_processes);
@@ -1949,15 +1983,30 @@ async function fetchWorkstationDetailsTelemetry(id) {
             // Default empty resource state
             document.getElementById("gauge-cpu-val").innerText = "0%";
             document.getElementById("gauge-ram-val").innerText = "0%";
-            document.getElementById("gauge-cpu-bar").style.width = "0%";
-            document.getElementById("gauge-ram-bar").style.width = "0%";
 
-            // Empty tables
-            const emptyTableHtml = `<tr><td colspan="10" class="empty-state-row" style="text-align: center; color: var(--color-text-light);">No live telemetry data received from agent.</td></tr>`;
-            document.getElementById("details-processes-list").innerHTML = emptyTableHtml;
-            document.getElementById("details-network-list").innerHTML = emptyTableHtml;
-            document.getElementById("details-usb-list").innerHTML = emptyTableHtml;
-            document.getElementById("details-sessions-list").innerHTML = emptyTableHtml;
+            // Reset circular gauges to OFF
+            const cpuCircle = document.getElementById("gauge-cpu-circle-container");
+            const cpuText = document.getElementById("gauge-cpu-circle-text");
+            cpuCircle.className = "relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0";
+            cpuText.innerText = "OFF";
+            cpuText.className = "text-[10px] text-slate-400 font-bold";
+
+            const ramCircle = document.getElementById("gauge-ram-circle-container");
+            const ramText = document.getElementById("gauge-ram-circle-text");
+            ramCircle.className = "relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0";
+            ramText.innerText = "OFF";
+            ramText.className = "text-[10px] text-slate-400 font-bold";
+
+            // Toggle panes visibility
+            document.getElementById("details-tabbed-container").style.display = "none";
+            const missingPane = document.getElementById("details-agent-missing-pane");
+            missingPane.style.display = "block";
+
+            // Update CLI command target dynamically
+            const cliElement = document.getElementById("cliString");
+            if (cliElement) {
+                cliElement.innerText = `python workstation_agent.py --target ${window.location.hostname}`;
+            }
         }
 
     } catch (error) {
@@ -3442,5 +3491,11 @@ function exportVisibleTableToCSV() {
         link.click();
         document.body.removeChild(link);
     }
+}
+
+function copyCliString() {
+    const content = document.getElementById("cliString").innerText;
+    navigator.clipboard.writeText(content);
+    showToast("Deployment instruction copied to clipboard.");
 }
 

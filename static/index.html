@@ -13,7 +13,7 @@
     <script src="/static/js/lucide.min.js"></script>
     <!-- Chart.js -->
     <script src="/static/js/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=22">
+    <link rel="stylesheet" href="/static/css/style.css?v=23">
 </head>
 
 <body>
@@ -464,47 +464,60 @@
 
                     <!-- Workstation Details Pane -->
                     <div id="workstation-details-pane" class="card workstation-details-card" style="display: none;">
-                        <div class="details-header">
-                            <div class="details-host-info">
-                                <h3 id="details-hostname">Workstation-PC</h3>
-                                <span id="details-os">Windows 10</span>
-                                <div class="details-subinfo-row">
-                                    <code class="code-ip" id="details-ip">192.168.1.101</code>
-                                    <code class="code-mac" id="details-mac">33:44:55:66:77:88</code>
+                        <div class="details-header bg-white border border-slate-100 rounded-xl p-6 shadow-sm mb-6">
+                            <div class="flex items-start justify-between border-b border-slate-100 pb-4 flex-wrap gap-4">
+                                <div>
+                                    <!-- Fixed Redundant Header Label Block -->
+                                    <h2 class="text-xl font-black text-slate-900 tracking-tight" id="details-hostname">Workstation-PC</h2>
+                                    <div class="flex items-center space-x-2 mt-1.5 text-xs text-slate-500 font-semibold flex-wrap gap-y-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 font-bold uppercase tracking-wider" id="details-os-badge">
+                                            ● Offline / Unmonitored
+                                        </span>
+                                        <span class="font-mono text-slate-600">IP: <span id="details-ip">192.168.1.101</span></span>
+                                        <span class="text-slate-300">•</span>
+                                        <span class="font-mono text-slate-600">MAC: <span id="details-mac">33:44:55:66:77:88</span></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Primary Isolation Control Alignment Patch -->
+                                <div class="flex items-center">
+                                    <span id="details-isolation-status" class="isolation-badge mr-2" style="display: none;">HOST ISOLATED</span>
+                                    <button id="btn-isolate-host" onclick="triggerHostIsolation()" 
+                                            class="inline-flex items-center px-4 py-2 rounded-lg text-xs font-black bg-rose-600 text-white hover:bg-rose-700 transition tracking-wide shadow-sm space-x-1.5">
+                                        <span>🛡️</span>
+                                        <span>Isolate Host</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div class="details-actions">
-                                <span id="details-isolation-status" class="isolation-badge" style="display: none;">HOST
-                                    ISOLATED</span>
-                                <button class="btn btn-danger" id="btn-isolate-host" onclick="triggerHostIsolation()">
-                                    <i data-lucide="shield-off"></i>
-                                    <span>Isolate Host</span>
-                                </button>
+
+                            <!-- Real-Time Metrics Indicator Data Rows -->
+                            <div class="grid grid-cols-2 gap-4 mt-6">
+                                <!-- CPU Usage Meter Container Grid -->
+                                <div class="flex items-center justify-between p-4 rounded-xl border border-slate-50 bg-slate-50/50">
+                                    <div>
+                                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">CPU Utilization</span>
+                                        <span class="text-2xl font-black text-slate-700 mt-1 block" id="gauge-cpu-val">0%</span>
+                                    </div>
+                                    <!-- Radial Gauge Container -->
+                                    <div id="gauge-cpu-circle-container" class="relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0">
+                                        <span class="text-[10px] text-slate-400 font-bold" id="gauge-cpu-circle-text">OFF</span>
+                                    </div>
+                                </div>
+
+                                <!-- Memory Usage Meter Container Grid -->
+                                <div class="flex items-center justify-between p-4 rounded-xl border border-slate-50 bg-slate-50/50">
+                                    <div>
+                                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Memory Utilization</span>
+                                        <span class="text-2xl font-black text-slate-700 mt-1 block" id="gauge-ram-val">0%</span>
+                                    </div>
+                                    <div id="gauge-ram-circle-container" class="relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0">
+                                        <span class="text-[10px] text-slate-400 font-bold" id="gauge-ram-circle-text">OFF</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="details-metrics-row">
-                            <div class="metric-gauge-card">
-                                <div class="gauge-header">
-                                    <span>CPU Utilization</span>
-                                    <span class="gauge-value" id="gauge-cpu-val">0%</span>
-                                </div>
-                                <div class="progress-bar-container">
-                                    <div class="progress-bar" id="gauge-cpu-bar" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                            <div class="metric-gauge-card">
-                                <div class="gauge-header">
-                                    <span>Memory Utilization</span>
-                                    <span class="gauge-value" id="gauge-ram-val">0%</span>
-                                </div>
-                                <div class="progress-bar-container">
-                                    <div class="progress-bar" id="gauge-ram-bar" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="details-tabbed-container">
+                        <div class="details-tabbed-container" id="details-tabbed-container">
                             <div class="details-tab-nav">
                                 <button class="details-tab-btn active" id="btn-dt-processes"
                                     onclick="switchDetailsTab('processes')">Processes</button>
@@ -597,6 +610,30 @@
                                                 <!-- Loaded dynamically -->
                                             </tbody>
                                         </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Telemetry Missing Empty State (Deployment Agent Missing) -->
+                        <div id="details-agent-missing-pane" style="display: none;" class="bg-white border border-slate-100 rounded-xl mt-6 shadow-sm overflow-hidden">
+                            <div class="p-8">
+                                <div class="max-w-md mx-auto text-center py-6">
+                                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">⚠️</div>
+                                    <h3 class="text-sm font-bold text-slate-800">Deployment Agent Missing</h3>
+                                    <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                        This workstation is unmonitored. Run the workspace configuration script on the host system to begin capturing live telemetry metrics.
+                                    </p>
+                                    
+                                    <!-- Copy-Pastable Interaction Block Element -->
+                                    <div class="mt-5 flex items-center justify-between rounded-lg bg-slate-900 px-4 py-2 border border-slate-800 text-left shadow-inner">
+                                        <code id="cliString" class="font-mono text-[11px] text-emerald-400 break-all select-all font-medium">
+                                            python workstation_agent.py --target 10.102.184.1
+                                        </code>
+                                        <button onclick="copyCliString()" 
+                                                class="ml-3 px-2 py-1 text-[10px] font-black text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition whitespace-nowrap uppercase tracking-wider">
+                                            Copy
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1176,7 +1213,7 @@
     </div>
 
     <!-- App Script -->
-    <script src="/static/js/app.js?v=21"></script>
+    <script src="/static/js/app.js?v=22"></script>
 </body>
 
 </html>
