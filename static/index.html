@@ -14,6 +14,15 @@
     <!-- Chart.js -->
     <script src="/static/js/chart.umd.min.js"></script>
     <link rel="stylesheet" href="/static/css/style.css?v=24">
+    <!-- Tailwind Play CDN with Preflight disabled to prevent styling conflicts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: {
+                preflight: false,
+            }
+        }
+    </script>
 </head>
 
 <body>
@@ -464,54 +473,57 @@
 
                     <!-- Workstation Details Pane -->
                     <div id="workstation-details-pane" class="card workstation-details-card" style="display: none;">
-                        <div class="details-header bg-white border border-slate-100 rounded-xl p-6 shadow-sm mb-6">
-                            <div class="flex items-start justify-between border-b border-slate-100 pb-4 flex-wrap gap-4">
-                                <div>
-                                    <!-- Fixed Redundant Header Label Block -->
-                                    <h2 class="text-xl font-black text-slate-900 tracking-tight" id="details-hostname">Workstation-PC</h2>
-                                    <div class="flex items-center space-x-2 mt-1.5 text-xs text-slate-500 font-semibold flex-wrap gap-y-1">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 font-bold uppercase tracking-wider" id="details-os-badge">
-                                            ● Offline / Unmonitored
+                        <!-- Central Telemetry Dashboard Workspace Wrapper -->
+                        <div class="space-y-6 p-6 bg-white border border-slate-200/80 rounded-xl shadow-sm mb-6">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-5 flex-wrap gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center space-x-3 flex-wrap gap-y-1">
+                                        <h2 class="text-xl font-bold tracking-tight text-slate-900" id="details-hostname">device-10-102-184-14</h2>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600" id="details-os-badge">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
+                                            Offline / Unmonitored
                                         </span>
-                                        <span class="font-mono text-slate-600">IP: <span id="details-ip">192.168.1.101</span></span>
-                                        <span class="text-slate-300">•</span>
-                                        <span class="font-mono text-slate-600">MAC: <span id="details-mac">33:44:55:66:77:88</span></span>
+                                    </div>
+                                    <!-- Clean, Separate Grid Metadata Row -->
+                                    <div class="flex items-center space-x-4 text-xs font-mono text-slate-500 flex-wrap gap-y-1">
+                                        <div><span class="text-slate-400 font-sans">IP Address:</span> <span id="details-ip">10.102.184.14</span></div>
+                                        <div class="text-slate-300">|</div>
+                                        <div><span class="text-slate-400 font-sans">MAC Interface:</span> <span id="details-mac">2E:4E:0B:F6:FA:FC</span></div>
                                     </div>
                                 </div>
                                 
-                                <!-- Primary Isolation Control Alignment Patch -->
+                                <!-- Action Control Group -->
                                 <div class="flex items-center">
                                     <span id="details-isolation-status" class="isolation-badge mr-2" style="display: none;">HOST ISOLATED</span>
                                     <button id="btn-isolate-host" onclick="triggerHostIsolation()" 
-                                            class="inline-flex items-center px-4 py-2 rounded-lg text-xs font-black bg-rose-600 text-white hover:bg-rose-700 transition tracking-wide shadow-sm space-x-1.5">
-                                        <span>🛡️</span>
-                                        <span>Isolate Host</span>
+                                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-150 shadow-sm tracking-wide">
+                                        Isolate Host
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Real-Time Metrics Indicator Data Rows -->
-                            <div class="grid grid-cols-2 gap-4 mt-6">
-                                <!-- CPU Usage Meter Container Grid -->
-                                <div class="flex items-center justify-between p-4 rounded-xl border border-slate-50 bg-slate-50/50">
-                                    <div>
-                                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">CPU Utilization</span>
-                                        <span class="text-2xl font-black text-slate-700 mt-1 block" id="gauge-cpu-val">0%</span>
+                            <!-- 2. METRICS METERS: Visual Isolation Containment -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- CPU Diagnostic Cell -->
+                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                                    <div class="space-y-1">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CPU Utilization</span>
+                                        <div class="text-2xl font-black text-slate-400" id="gauge-cpu-val">0%</div>
                                     </div>
-                                    <!-- Radial Gauge Container -->
-                                    <div id="gauge-cpu-circle-container" class="relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0">
-                                        <span class="text-[10px] text-slate-400 font-bold" id="gauge-cpu-circle-text">OFF</span>
+                                    <!-- Neutral state ring container replacing active color arcs when offline -->
+                                    <div id="gauge-cpu-circle-container" class="w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0">
+                                        <span class="text-[9px] font-mono font-bold text-slate-400" id="gauge-cpu-circle-text">OFF</span>
                                     </div>
                                 </div>
 
-                                <!-- Memory Usage Meter Container Grid -->
-                                <div class="flex items-center justify-between p-4 rounded-xl border border-slate-50 bg-slate-50/50">
-                                    <div>
-                                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Memory Utilization</span>
-                                        <span class="text-2xl font-black text-slate-700 mt-1 block" id="gauge-ram-val">0%</span>
+                                <!-- Memory Diagnostic Cell -->
+                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                                    <div class="space-y-1">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Memory Allocation</span>
+                                        <div class="text-2xl font-black text-slate-400" id="gauge-ram-val">0%</div>
                                     </div>
-                                    <div id="gauge-ram-circle-container" class="relative w-12 h-12 flex items-center justify-center rounded-full border-4 border-slate-200 flex-shrink-0">
-                                        <span class="text-[10px] text-slate-400 font-bold" id="gauge-ram-circle-text">OFF</span>
+                                    <div id="gauge-ram-circle-container" class="w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0">
+                                        <span class="text-[9px] font-mono font-bold text-slate-400" id="gauge-ram-circle-text">OFF</span>
                                     </div>
                                 </div>
                             </div>
@@ -615,26 +627,29 @@
                             </div>
                         </div>
                         
-                        <!-- Telemetry Missing Empty State (Deployment Agent Missing) -->
-                        <div id="details-agent-missing-pane" style="display: none;" class="bg-white border border-slate-100 rounded-xl mt-6 shadow-sm overflow-hidden">
-                            <div class="p-8">
-                                <div class="max-w-md mx-auto text-center py-6">
-                                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">⚠️</div>
-                                    <h3 class="text-sm font-bold text-slate-800">Deployment Agent Missing</h3>
-                                    <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                                        This workstation is unmonitored. Run the workspace configuration script on the host system to begin capturing live telemetry metrics.
-                                    </p>
-                                    
-                                    <!-- Copy-Pastable Interaction Block Element -->
-                                    <div class="mt-5 flex items-center justify-between rounded-lg bg-slate-900 px-4 py-2 border border-slate-800 text-left shadow-inner">
-                                        <code id="cliString" class="font-mono text-[11px] text-emerald-400 break-all select-all font-medium">
-                                            python workstation_agent.py --target 10.102.184.1
-                                        </code>
-                                        <button onclick="copyCliString()" 
-                                                class="ml-3 px-2 py-1 text-[10px] font-black text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition whitespace-nowrap uppercase tracking-wider">
-                                            Copy
-                                        </button>
-                                    </div>
+                        <!-- 3. ACTIONS PANEL: Functional Empty State Mitigation -->
+                        <div id="details-agent-missing-pane" style="display: none;" class="border border-dashed border-slate-200 rounded-xl p-8 bg-slate-50/50 text-center mt-6">
+                            <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-3 border border-amber-100">
+                                ⚠️
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900">Deployment Agent Required</h3>
+                            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                                To stream core process telemetry spaces, network sockets, or active endpoints, provision the agent loop directly onto the destination asset host machine.
+                            </p>
+                            
+                            <!-- Code Command Terminal Container Block -->
+                            <div class="mt-5 max-w-md mx-auto rounded-lg bg-slate-900 border border-slate-800 shadow-md overflow-hidden text-left">
+                                <div class="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700/40 select-none">
+                                    <span class="text-[10px] font-mono text-slate-400">PowerShell / CMD</span>
+                                    <span class="text-[10px] font-sans font-semibold text-slate-500">Secure CLI Deployment</span>
+                                </div>
+                                <div class="p-3 flex items-center justify-between space-x-3">
+                                    <code id="cliString" class="font-mono text-xs text-emerald-400 break-all pr-2">
+                                        python workstation_agent.py --target 10.102.184.1
+                                    </code>
+                                    <button onclick="copyCliString()" class="px-2.5 py-1 text-[11px] font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:text-white rounded transition shadow-sm whitespace-nowrap">
+                                        Copy
+                                    </button>
                                 </div>
                             </div>
                         </div>
