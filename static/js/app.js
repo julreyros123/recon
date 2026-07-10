@@ -1908,11 +1908,13 @@ async function fetchWorkstationDetailsTelemetry(id) {
         // Manage OS Badge State
         const osBadge = document.getElementById("details-os-badge");
         if (data.latest && data.latest.os_info) {
-            osBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Online / Monitored (${data.latest.os_info})`;
-            osBadge.className = "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700";
+            osBadge.innerHTML = `<span style="width: 6px; height: 6px; background-color: #10b981; border-radius: 50%; margin-right: 6px;"></span>Online / Monitored (${data.latest.os_info})`;
+            osBadge.style.backgroundColor = "#ecfdf5";
+            osBadge.style.color = "#047857";
         } else {
-            osBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>Offline / Unmonitored`;
-            osBadge.className = "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600";
+            osBadge.innerHTML = `<span style="width: 6px; height: 6px; background-color: #94a3b8; border-radius: 50%; margin-right: 6px;"></span>Offline / Unmonitored`;
+            osBadge.style.backgroundColor = "#f1f5f9";
+            osBadge.style.color = "#475569";
         }
 
         // Manage Isolation Button
@@ -1958,17 +1960,17 @@ async function fetchWorkstationDetailsTelemetry(id) {
             // Set circular gauges classes and text to ON
             const cpuCircle = document.getElementById("gauge-cpu-circle-container");
             const cpuText = document.getElementById("gauge-cpu-circle-text");
-            cpuCircle.className = "w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center flex-shrink-0 " + 
-                (cpu > 90 ? "border-red-500 text-red-600" : (cpu > 70 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"));
+            cpuCircle.style.borderColor = cpu > 90 ? "#ef4444" : (cpu > 70 ? "#f59e0b" : "#10b981");
+            cpuCircle.style.backgroundColor = cpu > 90 ? "#fef2f2" : (cpu > 70 ? "#fffbeb" : "#ecfdf5");
             cpuText.innerText = "ON";
-            cpuText.className = "text-[9px] font-mono font-bold";
+            cpuText.style.color = cpu > 90 ? "#b91c1c" : (cpu > 70 ? "#b45309" : "#047857");
 
             const ramCircle = document.getElementById("gauge-ram-circle-container");
             const ramText = document.getElementById("gauge-ram-circle-text");
-            ramCircle.className = "w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center flex-shrink-0 " + 
-                (ram > 90 ? "border-red-500 text-red-600" : (ram > 70 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"));
+            ramCircle.style.borderColor = ram > 90 ? "#ef4444" : (ram > 70 ? "#f59e0b" : "#10b981");
+            ramCircle.style.backgroundColor = ram > 90 ? "#fef2f2" : (ram > 70 ? "#fffbeb" : "#ecfdf5");
             ramText.innerText = "ON";
-            ramText.className = "text-[9px] font-mono font-bold";
+            ramText.style.color = ram > 90 ? "#b91c1c" : (ram > 70 ? "#b45309" : "#047857");
 
             // Toggle panes visibility
             document.getElementById("details-tabbed-container").style.display = "block";
@@ -1987,15 +1989,17 @@ async function fetchWorkstationDetailsTelemetry(id) {
             // Reset circular gauges to OFF
             const cpuCircle = document.getElementById("gauge-cpu-circle-container");
             const cpuText = document.getElementById("gauge-cpu-circle-text");
-            cpuCircle.className = "w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0";
+            cpuCircle.style.borderColor = "#e2e8f0";
+            cpuCircle.style.backgroundColor = "#ffffff";
             cpuText.innerText = "OFF";
-            cpuText.className = "text-[9px] font-mono font-bold text-slate-400";
+            cpuText.style.color = "#94a3b8";
 
             const ramCircle = document.getElementById("gauge-ram-circle-container");
             const ramText = document.getElementById("gauge-ram-circle-text");
-            ramCircle.className = "w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0";
+            ramCircle.style.borderColor = "#e2e8f0";
+            ramCircle.style.backgroundColor = "#ffffff";
             ramText.innerText = "OFF";
-            ramText.className = "text-[9px] font-mono font-bold text-slate-400";
+            ramText.style.color = "#94a3b8";
 
             // Toggle panes visibility
             document.getElementById("details-tabbed-container").style.display = "none";

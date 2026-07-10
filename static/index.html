@@ -474,56 +474,54 @@
                     <!-- Workstation Details Pane -->
                     <div id="workstation-details-pane" class="card workstation-details-card" style="display: none;">
                         <!-- Central Telemetry Dashboard Workspace Wrapper -->
-                        <div class="space-y-6 p-6 bg-white border border-slate-200/80 rounded-xl shadow-sm mb-6">
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-5 flex-wrap gap-4">
-                                <div class="space-y-1">
-                                    <div class="flex items-center space-x-3 flex-wrap gap-y-1">
-                                        <h2 class="text-xl font-bold tracking-tight text-slate-900" id="details-hostname">device-10-102-184-14</h2>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600" id="details-os-badge">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 24px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; gap-y: 6px;">
+                                        <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0;" id="details-hostname">device-10-102-184-14</h2>
+                                        <span id="details-os-badge" style="font-size: 11px; font-weight: 600; background-color: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 12px; display: inline-flex; align-items: center;">
+                                            <span style="width: 6px; height: 6px; background-color: #94a3b8; border-radius: 50%; margin-right: 6px;"></span>
                                             Offline / Unmonitored
                                         </span>
                                     </div>
-                                    <!-- Clean, Separate Grid Metadata Row -->
-                                    <div class="flex items-center space-x-4 text-xs font-mono text-slate-500 flex-wrap gap-y-1">
-                                        <div><span class="text-slate-400 font-sans">IP Address:</span> <span id="details-ip">10.102.184.14</span></div>
-                                        <div class="text-slate-300">|</div>
-                                        <div><span class="text-slate-400 font-sans">MAC Interface:</span> <span id="details-mac">2E:4E:0B:F6:FA:FC</span></div>
+                                    <!-- Clean, Separate Metadata Row -->
+                                    <div style="font-family: monospace; font-size: 12px; color: #64748b; margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; gap-y: 6px;">
+                                        <div><span style="font-family: sans-serif; color: #94a3b8;">IP Address:</span> <span id="details-ip">10.102.184.14</span></div>
+                                        <div style="color: #cbd5e1;">|</div>
+                                        <div><span style="font-family: sans-serif; color: #94a3b8;">MAC Interface:</span> <span id="details-mac">2E:4E:0B:F6:FA:FC</span></div>
                                     </div>
                                 </div>
                                 
                                 <!-- Action Control Group -->
-                                <div class="flex items-center">
-                                    <span id="details-isolation-status" class="isolation-badge mr-2" style="display: none;">HOST ISOLATED</span>
-                                    <button id="btn-isolate-host" onclick="triggerHostIsolation()" 
-                                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-150 shadow-sm tracking-wide">
+                                <div style="display: flex; align-items: center;">
+                                    <span id="details-isolation-status" class="isolation-badge mr-2" style="display: none; margin-right: 8px;">HOST ISOLATED</span>
+                                    <button id="btn-isolate-host" onclick="triggerHostIsolation()" style="padding: 8px 16px; background-color: #dc2626; color: #ffffff; font-size: 12px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                                         Isolate Host
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- 2. METRICS METERS: Visual Isolation Containment -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <!-- 2. METRICS METERS: Grid Layout Container -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box;">
                                 <!-- CPU Diagnostic Cell -->
-                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                                    <div class="space-y-1">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CPU Utilization</span>
-                                        <div class="text-2xl font-black text-slate-400" id="gauge-cpu-val">0%</div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px;">
+                                    <div>
+                                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; tracking: 0.05em; display: block;">CPU Utilization</span>
+                                        <div style="font-size: 24px; font-weight: 900; color: #94a3b8; margin-top: 4px;" id="gauge-cpu-val">0%</div>
                                     </div>
-                                    <!-- Neutral state ring container replacing active color arcs when offline -->
-                                    <div id="gauge-cpu-circle-container" class="w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0">
-                                        <span class="text-[9px] font-mono font-bold text-slate-400" id="gauge-cpu-circle-text">OFF</span>
+                                    <div id="gauge-cpu-circle-container" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #e2e8f0; background-color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <span id="gauge-cpu-circle-text" style="font-family: monospace; font-size: 9px; font-weight: 700; color: #94a3b8;">OFF</span>
                                     </div>
                                 </div>
 
                                 <!-- Memory Diagnostic Cell -->
-                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                                    <div class="space-y-1">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Memory Allocation</span>
-                                        <div class="text-2xl font-black text-slate-400" id="gauge-ram-val">0%</div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px;">
+                                    <div>
+                                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; tracking: 0.05em; display: block;">Memory Allocation</span>
+                                        <div style="font-size: 24px; font-weight: 900; color: #94a3b8; margin-top: 4px;" id="gauge-ram-val">0%</div>
                                     </div>
-                                    <div id="gauge-ram-circle-container" class="w-10 h-10 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center flex-shrink-0">
-                                        <span class="text-[9px] font-mono font-bold text-slate-400" id="gauge-ram-circle-text">OFF</span>
+                                    <div id="gauge-ram-circle-container" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #e2e8f0; background-color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <span id="gauge-ram-circle-text" style="font-family: monospace; font-size: 9px; font-weight: 700; color: #94a3b8;">OFF</span>
                                     </div>
                                 </div>
                             </div>
