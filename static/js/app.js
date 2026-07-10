@@ -1146,6 +1146,28 @@ async function clearAllDevices() {
     }
 }
 
+// Seed demonstration network inventory nodes
+async function seedDemoDevices() {
+    if (!confirm("This will clear the current database and seed realistic demo devices (Dell servers, Cisco routers, HP/Epson printers) to test your categories. Proceed?")) return;
+
+    try {
+        const response = await fetch("/api/devices/seed", {
+            method: "POST",
+            headers: getAuthHeaders()
+        });
+        if (handleApiError(response)) return;
+        if (!response.ok) throw new Error("Seeding operation failed.");
+
+        const result = await response.json();
+        showToast(result.message || "Demo data seeded successfully.");
+        await fetchDevices();
+        fetchAuditLogs();
+    } catch (error) {
+        console.error("Error seeding demo database:", error);
+        showToast(`Failed: ${error.message}`);
+    }
+}
+
 // Toggle device trust status
 async function toggleDeviceTrust(deviceId) {
     try {

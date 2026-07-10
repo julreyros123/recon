@@ -490,3 +490,56 @@ def clear_all_devices(current_user: dict = Depends(RoleChecker(["super_admin"]))
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail="Database clear failed")
+
+@router.post("/seed")
+def seed_demo_devices(current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
+    try:
+        # Clear existing first to make it a clean demo state
+        cursor.execute("DELETE FROM devices")
+        
+        # Define realistic demo devices with brands and models
+        demo_devices = [
+            # Servers
+            ("192.168.8.10", "00:15:5d:01:0a:11", "dc-primary.knowsec.local", "Dell Inc.", "PowerEdge R740 Rack Server", "active", '[{"port": 53, "service": "domain"}, {"port": 88, "service": "kerberos"}, {"port": 389, "service": "ldap"}, {"port": 445, "service": "microsoft-ds"}]', "server", 1, "IT Department", "Primary Domain Controller", "Trusted"),
+            ("192.168.8.12", "00:11:32:a1:b2:c3", "nas-backup.knowsec.local", "Synology Inc.", "DiskStation DS1821+", "active", '[{"port": 80, "service": "http"}, {"port": 5000, "service": "nas-mgmt"}]', "server", 1, "IT Department", "Local Storage Backup", "Trusted"),
+            
+            # Routers / Gateways
+            ("192.168.8.1", "00:03:7f:12:34:56", "core-gateway.knowsec.local", "Cisco Systems", "Catalyst 9300 Switch / Router", "active", '[{"port": 22, "service": "ssh"}, {"port": 443, "service": "https"}]', "router", 1, "Network Admin", "Core Gateway Router", "Trusted"),
+            ("192.168.8.2", "24:a0:74:9c:8d:e1", "wifi-ap-hq.knowsec.local", "Ubiquiti Networks", "UniFi U6-Pro AP", "active", '[{"port": 22, "service": "ssh"}]', "router", 1, "Network Admin", "HQ Office Access Point", "Trusted"),
+            
+            # Printers
+            ("192.168.8.200", "00:26:ab:f1:e2:d3", "printer-finance.knowsec.local", "Epson", "EcoTank L15150 Multi-Function", "active", '[{"port": 9100, "service": "jetdirect"}]', "printer", 1, "Finance", "Finance Department Printer", "Trusted"),
+            ("192.168.8.201", "a4:5d:36:0f:71:b2", "printer-hr.knowsec.local", "HP Inc.", "LaserJet Pro MFP M428fdw", "active", '[{"port": 80, "service": "http"}, {"port": 9100, "service": "jetdirect"}]', "printer", 1, "HR", "HR Department Printer", "Trusted"),
+            
+            # Smart TVs
+            ("192.168.8.150", "d4:bf:7f:c2:b1:a0", "tv-conference.knowsec.local", "Samsung Electronics", "QLED 4K Display 75\"", "active", '[{"port": 8001, "service": "smart-view"}]', "smart-tv", 1, "Admin", "Conference Room Screen", "Trusted"),
+            
+            # Mobiles
+            ("192.168.8.180", "cc:29:f5:aa:bb:cc", "ipad-lobby.knowsec.local", "Apple Inc.", "iPad Air (5th Gen)", "active", "[]", "mobile", 0, "Marketing", "Guest Registration Tablet", "Pending"),
+            
+            # Generic
+            ("192.168.8.99", "70:5a:b6:3d:2c:1a", "ups-rack1.knowsec.local", "APC by Schneider Electric", "Smart-UPS SMT1500C", "active", '[{"port": 161, "service": "snmp"}]', "generic", 1, "IT Department", "Rack 1 Power Backup", "Trusted")
+            # NOTE: Workstations are purposely omitted so it remains empty and displays the empty state!
+        ]
+        
+        for dev in demo_devices:
+            cursor.execute("""
+                INSERT INTO devices 
+                (ip, mac, hostname, vendor, model, status, open_ports, os_type, is_trusted, owner_name, department, purpose, trust_level, registered_by, date_registered) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system_seeder', CURRENT_TIMESTAMP)
+            """, dev)
+            
+        db.commit()
+        log_audit_event(
+            username=current_user["username"],
+            role=current_user["role"],
+            action="REGISTER",
+            target="demo_seed",
+            ip_address="127.0.0.1",
+            details="Seeded realistic demonstration network devices inventory."
+        )
+        return {"message": "Demo data seeded successfully. Workstations left empty for policy demonstration."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database seeding failed: {str(e)}")
