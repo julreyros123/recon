@@ -749,7 +749,7 @@ function switchTab(tabId) {
 
     const headerTitle = document.getElementById("page-title");
     const headerSubtitle = document.getElementById("page-subtitle");
-    const headerActions = document.getElementById("custom-subnet-box");
+    const headerActions = document.querySelector(".header-actions");
     const statsRow = document.getElementById("dashboard-stats-row");
     const btnAddDevice = document.getElementById("btn-add-device");
     const btnTriggerScan = document.getElementById("btn-trigger-scan");
@@ -758,19 +758,19 @@ function switchTab(tabId) {
     if (tabId === 'dashboard') {
         headerTitle.innerText = "Overview Dashboard";
         headerSubtitle.innerText = "Security posture summary and network health analytics.";
-        headerActions.style.display = "none";
+        if (headerActions) headerActions.style.display = "none";
         statsRow.style.display = "none";
         fetchDashboardStats();
     } else if (tabId === 'devices') {
         headerTitle.innerText = "Devices Directory";
         headerSubtitle.innerText = "Real-time listing of active and logged network nodes.";
         if (currentRole !== 'user') {
-            headerActions.style.display = "flex";
+            if (headerActions) headerActions.style.display = "flex";
             if (btnAddDevice) btnAddDevice.style.display = "inline-flex";
             if (btnTriggerScan) btnTriggerScan.style.display = "inline-flex";
             if (btnClearDevices) btnClearDevices.style.display = currentRole === 'super_admin' ? "inline-flex" : "none";
         } else {
-            headerActions.style.display = "none";
+            if (headerActions) headerActions.style.display = "none";
         }
         statsRow.style.display = "grid";
     } else if (tabId === 'users') {
@@ -853,6 +853,68 @@ function logout() {
     }
 }
 
+// ── Forced Password Change (triggered when must_change_password=true) ─────
+async function submitForcedPasswordChange() {
+    const currentPw = document.getElementById('force-current-pw').value;
+    const newPw = document.getElementById('force-new-pw').value;
+    const confirmPw = document.getElementById('force-confirm-pw').value;
+    const errorEl = document.getElementById('force-pw-error');
+    const btn = document.getElementById('btn-force-change-pw');
+
+    errorEl.style.display = 'none';
+
+    if (!currentPw || !newPw || !confirmPw) {
+        errorEl.textContent = 'All fields are required.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (newPw.length < 8) {
+        errorEl.textContent = 'New password must be at least 8 characters.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (newPw !== confirmPw) {
+        errorEl.textContent = 'Passwords do not match.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (newPw === currentPw) {
+        errorEl.textContent = 'New password must be different from your current password.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>Updating...</span>';
+
+    try {
+        const response = await fetch('/api/users/change-password', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: btoa(currentPw),
+                new_password: newPw
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Password change failed.');
+        }
+
+        document.getElementById('modal-force-change-pw').classList.remove('active');
+        showToast('Password updated successfully. Welcome!', 4000, 'success');
+        initApp();
+    } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="lock" style="width:15px;height:15px;"></i> Set New Password';
+        lucide.createIcons();
+    }
+}
+
 async function handleLoginSubmit(event) {
     event.preventDefault();
     const usernameInput = document.getElementById("login-username").value.trim();
@@ -895,6 +957,13 @@ async function handleLoginSubmit(event) {
             openModal('modal-pin-verify');
             setTimeout(() => document.getElementById('pin-d1')?.focus(), 100);
             showToast(`Password verified. Enter your System Administrator security PIN.`);
+        } else if (data.must_change_password) {
+            // Force password change before allowing access
+            const loginOverlay = document.getElementById("login-overlay");
+            if (loginOverlay) loginOverlay.classList.remove("active");
+            document.getElementById('modal-force-change-pw').classList.add('active');
+            setTimeout(() => document.getElementById('force-current-pw')?.focus(), 100);
+            showToast('Security notice: Please set a new password to continue.', 5000, 'warning');
         } else {
             showToast(`Access granted. Welcome, ${currentFullName}.`);
             initApp();
@@ -1262,8 +1331,78 @@ async function resetUserPassword(userId, username) {
     }
 }
 
+// Opens scan modal — resets state on each open
+function openScanModal() {
+    const input = document.getElementById('modal-subnet-input');
+    const error = document.getElementById('modal-subnet-error');
+    const preview = document.getElementById('subnet-preview');
+    if (input) input.value = '';
+    if (error) error.style.display = 'none';
+    if (preview) preview.style.display = 'none';
+    openModal('modal-scan-subnet');
+}
+
+// Auto-detect the current machine's subnet via the API
+async function autoDetectSubnet() {
+    const input = document.getElementById('modal-subnet-input');
+    const preview = document.getElementById('subnet-preview');
+    const previewVal = document.getElementById('subnet-preview-value');
+    const btn = document.querySelector('#modal-scan-subnet .btn-secondary');
+    if (btn) { btn.disabled = true; btn.innerText = 'Detecting...'; }
+
+    try {
+        // Use the server's own IP (from the host) to derive the subnet
+        const res = await fetch('/api/dashboard/stats', { headers: getAuthHeaders() });
+        // Fallback: derive from window.location hostname
+        let detectedSubnet = '';
+        const host = window.location.hostname;
+        // If it looks like an IP, derive /24 subnet
+        const ipParts = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/);
+        if (ipParts) {
+            detectedSubnet = `${ipParts[1]}.${ipParts[2]}.${ipParts[3]}.0/24`;
+        } else {
+            detectedSubnet = '192.168.1.0/24';
+        }
+        if (input) {
+            input.value = detectedSubnet;
+            validateScanSubnetInput(input);
+        }
+        if (preview && previewVal) {
+            previewVal.textContent = detectedSubnet;
+            preview.style.display = 'block';
+        }
+    } catch (e) {
+        showToast('Could not auto-detect subnet.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="locate" style="width:14px;height:14px;"></i> Auto-detect'; lucide.createIcons(); }
+    }
+}
+
+// Validate CIDR format live as the user types
+function validateScanSubnetInput(input) {
+    const error = document.getElementById('modal-subnet-error');
+    const val = input.value.trim();
+    if (!val) {
+        if (error) error.style.display = 'none';
+        return true;
+    }
+    const cidrPattern = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+    const valid = cidrPattern.test(val);
+    if (error) error.style.display = valid ? 'none' : 'block';
+    return valid;
+}
+
+// Triggered by Start Scan button inside the modal
+async function confirmScanFromModal() {
+    const input = document.getElementById('modal-subnet-input');
+    const val = input ? input.value.trim() : '';
+    if (val && !validateScanSubnetInput(input)) return; // block on invalid format
+    closeModal('modal-scan-subnet');
+    await triggerScan(val || null);
+}
+
 // Subnet Scanning Background Trigger & Active Polling UX
-async function triggerScan() {
+async function triggerScan(subnetOverride = null) {
     if (isScanning) return;
 
     isScanning = true;
@@ -1275,7 +1414,7 @@ async function triggerScan() {
     const progressText = document.getElementById("scan-progress-text");
     progressText.innerText = "Dispatching Nmap ping packets...";
 
-    const customSubnet = document.getElementById("custom-subnet-input").value.trim();
+    const customSubnet = subnetOverride || '';
     let url = "/api/devices/scan";
     if (customSubnet) {
         url += `?subnet=${encodeURIComponent(customSubnet)}`;

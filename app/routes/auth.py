@@ -11,20 +11,23 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # ── Secret key management ─────────────────────────────────────
-KEY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".session_key")
-if os.path.exists(KEY_FILE):
-    try:
-        with open(KEY_FILE, "r") as f:
-            SECRET_KEY = f.read().strip()
-    except Exception:
-        SECRET_KEY = secrets.token_hex(32)
-else:
-    try:
-        SECRET_KEY = secrets.token_hex(32)
-        with open(KEY_FILE, "w") as f:
-            f.write(SECRET_KEY)
-    except Exception:
-        SECRET_KEY = secrets.token_hex(32)
+# Prefer SESSION_SECRET_KEY from .env (more secure than a plain file)
+from dotenv import load_dotenv
+load_dotenv()
+
+SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
+if not SECRET_KEY:
+    # Migration fallback: read from .session_key file if it exists
+    KEY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".session_key")
+    if os.path.exists(KEY_FILE):
+        try:
+            with open(KEY_FILE, "r") as f:
+                SECRET_KEY = f.read().strip()
+        except Exception:
+            pass
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)
+    print("WARNING: SESSION_SECRET_KEY not set. Tokens will be invalidated on restart. Add it to .env!")
 
 security_scheme = HTTPBearer()
 

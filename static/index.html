@@ -137,11 +137,6 @@
                     <p id="page-subtitle">Real-time listing of active and logged network nodes.</p>
                 </div>
                 <div class="header-actions">
-                    <div class="custom-subnet-container" id="custom-subnet-box">
-                        <i data-lucide="network" class="subnet-icon"></i>
-                        <input type="text" id="custom-subnet-input" autocomplete="off" name="custom-subnet" placeholder="Subnet range (optional)..."
-                            title="e.g. 192.168.1.0/24 or 127.0.0.1">
-                    </div>
                     <button class="btn btn-danger" id="btn-clear-devices" onclick="clearAllDevices()">
                         <i data-lucide="trash-2"></i>
                         <span>Clear Devices</span>
@@ -154,8 +149,8 @@
                         <i data-lucide="plus"></i>
                         <span>Add Device</span>
                     </button>
-                    <button class="btn btn-primary" id="btn-trigger-scan" onclick="triggerScan()">
-                        <i data-lucide="scan"></i>
+                    <button class="btn btn-primary" id="btn-trigger-scan" onclick="openModal('modal-scan-subnet')">
+                        <i data-lucide="radar"></i>
                         <span>Scan Subnet</span>
                     </button>
                 </div>
@@ -745,6 +740,88 @@
     </div>
 
     <!-- Modals Section -->
+
+    <!-- Scan Subnet Modal -->
+    <div class="modal-overlay" id="modal-scan-subnet">
+        <div class="modal-container" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3>Scan Network Subnet</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-scan-subnet')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: 1.25rem; line-height: 1.6;">
+                    Enter the subnet range to scan for active devices. The system will run a network ping sweep and auto-register any discovered hosts.
+                </p>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="modal-subnet-input" style="font-weight: 600; font-size: 0.8rem; margin-bottom: 0.4rem; display: block;">Subnet Range <span class="required">*</span></label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input
+                            type="text"
+                            id="modal-subnet-input"
+                            autocomplete="off"
+                            placeholder="e.g. 192.168.1.0/24"
+                            style="flex: 1;"
+                            oninput="validateScanSubnetInput(this)"
+                        >
+                        <button type="button" class="btn btn-secondary" onclick="autoDetectSubnet()" style="white-space: nowrap; font-size: 0.78rem; padding: 0 0.85rem;">
+                            <i data-lucide="locate" style="width:14px;height:14px;"></i>
+                            Auto-detect
+                        </button>
+                    </div>
+                    <span id="modal-subnet-error" style="font-size: 0.75rem; color: var(--color-danger); margin-top: 0.35rem; display: none;">Invalid format. Use CIDR notation, e.g. 10.0.0.0/24</span>
+                    <span style="font-size: 0.75rem; color: var(--color-text-light); margin-top: 0.35rem; display: block;">Leave blank to use the server default subnet.</span>
+                </div>
+                <div id="subnet-preview" style="display:none; margin-top: 0.75rem; padding: 0.75rem 1rem; background: var(--color-bg-sidebar); border-radius: 8px; border: 1px solid var(--color-border);">
+                    <div style="font-size: 0.75rem; color: var(--color-text-light); margin-bottom: 0.25rem;">Detected Network</div>
+                    <div id="subnet-preview-value" style="font-size: 0.875rem; font-weight: 600; font-family: monospace; color: var(--color-primary);"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-tertiary" onclick="closeModal('modal-scan-subnet')">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-scan" onclick="confirmScanFromModal()">
+                    <i data-lucide="radar" style="width:15px;height:15px;"></i>
+                    Start Scan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Force Password Change Modal (shown when must_change_password=true) -->
+    <div class="modal-overlay" id="modal-force-change-pw" style="z-index: 9999;">
+        <div class="modal-container" style="max-width: 440px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border-radius: 12px 12px 0 0;">
+                <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="shield-alert" style="width:20px;height:20px;"></i>
+                    Password Change Required
+                </h3>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: 1.25rem; line-height: 1.6;">
+                    Your account is using a default or reset password. You must set a new password before continuing.
+                </p>
+                <div class="form-group">
+                    <label for="force-current-pw">Current Password</label>
+                    <input type="password" id="force-current-pw" placeholder="Your current (default) password" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="force-new-pw">New Password <span class="required">*</span></label>
+                    <input type="password" id="force-new-pw" placeholder="Min. 8 characters" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="force-confirm-pw">Confirm New Password <span class="required">*</span></label>
+                    <input type="password" id="force-confirm-pw" placeholder="Repeat new password" autocomplete="new-password">
+                </div>
+                <span id="force-pw-error" style="font-size: 0.78rem; color: var(--color-danger); display: none;"></span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btn-force-change-pw" onclick="submitForcedPasswordChange()">
+                    <i data-lucide="lock" style="width:15px;height:15px;"></i>
+                    Set New Password
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add/Edit Device Modal -->
     <div class="modal-overlay" id="modal-device">
         <div class="modal-container">

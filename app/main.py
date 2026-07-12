@@ -24,6 +24,8 @@ from app.database.database import get_db_connection
 from app.scanner.snmp_scan import fetch_snmp_telemetry
 from app.routes.workstations import process_telemetry_report, TelemetryReport
 from app.scanner.network_sniffer import sniffer
+from app.routes.auth import get_current_user
+from fastapi import Depends
 
 # ── Rate Limiter ──────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
@@ -126,7 +128,7 @@ import asyncio
 import json
 
 @app.get("/api/infrastructure/tree")
-async def get_infrastructure_tree():
+async def get_infrastructure_tree(current_user: dict = Depends(get_current_user)):
     network_map = {
         "Server Room - Area A": {
             "root_server": {"name": "Primary Server", "ip": "192.168.1.10", "type": "server"},
@@ -146,14 +148,20 @@ async def get_infrastructure_tree():
     }
     return network_map
 
-# Simulated system-wide tracker tracking nodes that have been administratively isolated
+# System-wide tracker for administratively isolated nodes
 ISOLATED_DEVICE_IPS = set()
 
-# Simulated database baseline of trusted hardware addresses mapping to network IPs
-TRUSTED_DEVICE_REGISTRY = {
-    "192.168.8.101": "E4:55:A8:0D:C7:FE",
-    "192.168.8.102": "A1:2B:C3:4D:5E:6F"
-}
+def get_trusted_device_registry() -> dict:
+    """Fetch trusted device MAC registry live from the DB (is_trusted=1)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT ip, mac FROM devices WHERE is_trusted = 1 AND mac IS NOT NULL")
+        return {row["ip"]: row["mac"].upper() for row in cursor.fetchall()}
+    except Exception:
+        return {}
+    finally:
+        conn.close()
 
 @app.websocket("/ws/infrastructure/status")
 async def websocket_endpoint(websocket: WebSocket):
@@ -185,15 +193,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
         # Main alert generator processing loop (Simulation logic)
         try:
-            # We first sleep a bit, then trigger a MAC spoofing alert for demonstration
+            # Sleep briefly, then check live trusted registry for MAC spoofing
             await asyncio.sleep(5)
-            
+
             scanned_ip = "192.168.8.101"
-            detected_mac = "99:99:99:AA:BB:CC" # Does not match expected MAC
-            
-            if scanned_ip in TRUSTED_DEVICE_REGISTRY and scanned_ip not in ISOLATED_DEVICE_IPS:
-                expected_mac = TRUSTED_DEVICE_REGISTRY[scanned_ip]
-                if detected_mac != expected_mac:
+            detected_mac = "99:99:99:AA:BB:CC"  # Simulated spoofed MAC
+
+            trusted_registry = get_trusted_device_registry()
+            if scanned_ip in trusted_registry and scanned_ip not in ISOLATED_DEVICE_IPS:
+                expected_mac = trusted_registry[scanned_ip]
+                if detected_mac.upper() != expected_mac:
                     threat_alert = {
                         "event_type": "MAC_SPOOFING_ALERT",
                         "target_ip": scanned_ip,

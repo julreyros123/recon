@@ -196,6 +196,7 @@ def login(
 
         role = row["role"]
         pin_required = (role == "super_admin")
+        must_change = bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
 
         if role == "super_admin":
             exp_time = time.time() + 300
@@ -231,6 +232,7 @@ def login(
             "full_name": fn,
             "role": role,
             "pin_required": pin_required,
+            "must_change_password": must_change,
         }
     finally:
         pass
@@ -345,8 +347,10 @@ def change_password(
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 
         new_hash = hash_password(data.new_password)
-        cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?",
-                       (new_hash, current_user["username"]))
+        cursor.execute(
+            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE username = ?",
+            (new_hash, current_user["username"])
+        )
         conn.commit()
 
         log_audit_event(
@@ -401,7 +405,7 @@ def create_user(
 
     try:
         cursor.execute(
-            "INSERT INTO users (username, email, role, is_active, password_hash, allowed_ip) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (username, email, role, is_active, password_hash, allowed_ip, must_change_password) VALUES (?, ?, ?, ?, ?, ?, 1)",
             (safe_username, encrypt_pii(user.email), user.role, int(user.is_active), pw_hash, user.allowed_ip)
         )
         conn.commit()
@@ -558,7 +562,10 @@ def reset_user_password(
         default_pw = row["username"] + "123"
         pw_hash = hash_password(default_pw)
 
-        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
+        cursor.execute(
+            "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+            (pw_hash, user_id)
+        )
         conn.commit()
 
         log_audit_event(

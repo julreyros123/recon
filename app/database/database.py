@@ -158,18 +158,20 @@ def init_db():
             locked_until DATETIME,
             super_admin_pin_hash TEXT,
             last_login DATETIME,
-            allowed_ip TEXT DEFAULT '*'
+            allowed_ip TEXT DEFAULT '*',
+            must_change_password INTEGER DEFAULT 0
         )
     """)
     
     for col, defn in [
-        ("full_name",            "TEXT"),
-        ("login_attempts",       "INTEGER DEFAULT 0"),
-        ("locked_until",         "DATETIME"),
-        ("super_admin_pin_hash", "TEXT"),
-        ("last_login",           "DATETIME"),
-        ("password_hash",        "TEXT"),
-        ("allowed_ip",           "TEXT DEFAULT '*'"),
+        ("full_name",             "TEXT"),
+        ("login_attempts",        "INTEGER DEFAULT 0"),
+        ("locked_until",          "DATETIME"),
+        ("super_admin_pin_hash",  "TEXT"),
+        ("last_login",            "DATETIME"),
+        ("password_hash",         "TEXT"),
+        ("allowed_ip",            "TEXT DEFAULT '*'"),
+        ("must_change_password",  "INTEGER DEFAULT 0"),
     ]:
         _add_column_if_missing(cursor, "users", col, defn)
     
