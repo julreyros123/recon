@@ -42,35 +42,14 @@
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </button>
-                <div class="nav-group">
-                    <button class="nav-item active has-submenu" id="btn-nav-devices" onclick="toggleSubmenu('devices-submenu'); switchDevicesFilter('', this);">
-                        <i data-lucide="activity"></i>
-                        <span>Devices</span>
-                        <i data-lucide="chevron-down" class="submenu-chevron"></i>
-                    </button>
-                    <div class="nav-submenu" id="devices-submenu" style="display:none;">
-                        <button class="nav-item sub-item active" id="btn-sub-devices-all" onclick="switchDevicesFilter('', this); event.stopPropagation();">
-                            <i data-lucide="list"></i>
-                            <span>All Devices</span>
-                        </button>
-                        <button class="nav-item sub-item" id="btn-sub-devices-server" onclick="switchDevicesFilter('server', this); event.stopPropagation();">
-                            <i data-lucide="server"></i>
-                            <span>Servers</span>
-                        </button>
-                        <button class="nav-item sub-item" id="btn-sub-devices-workstation" onclick="switchDevicesFilter('workstation', this); event.stopPropagation();">
-                            <i data-lucide="monitor"></i>
-                            <span>Workstations</span>
-                        </button>
-                        <button class="nav-item sub-item" id="btn-sub-devices-router" onclick="switchDevicesFilter('router', this); event.stopPropagation();">
-                            <i data-lucide="wifi"></i>
-                            <span>Routers / Gateways</span>
-                        </button>
-                        <button class="nav-item sub-item" id="btn-sub-devices-printer" onclick="switchDevicesFilter('printer', this); event.stopPropagation();">
-                            <i data-lucide="printer"></i>
-                            <span>Printers</span>
-                        </button>
-                    </div>
-                </div>
+                <button class="nav-item active" id="btn-nav-devices" onclick="switchTab('devices')">
+                    <i data-lucide="activity"></i>
+                    <span>Devices</span>
+                </button>
+                <button class="nav-item" id="btn-nav-inventory" onclick="switchTab('inventory')">
+                    <i data-lucide="archive"></i>
+                    <span>Inventory</span>
+                </button>
                 <div class="nav-group">
                     <button class="nav-item has-submenu" id="btn-nav-workstations-group" onclick="toggleSubmenu('workstations-submenu')">
                         <i data-lucide="monitor"></i>
@@ -105,6 +84,10 @@
                     <i data-lucide="file-text"></i>
                     <span>Scan Logs</span>
                 </button>
+                <button class="nav-item" id="btn-nav-scan-history" onclick="switchTab('scan-history')">
+                    <i data-lucide="history"></i>
+                    <span>Scan History</span>
+                </button>
                 <button class="nav-item" id="btn-nav-audit" onclick="switchTab('audit')">
                     <i data-lucide="shield-check"></i>
                     <span>Audit Logs</span>
@@ -115,7 +98,7 @@
                     <div class="user-info-avatar" id="user-avatar-initials">SA</div>
                     <div class="user-info-details">
                         <span class="user-info-name" id="user-info-name">Admin</span>
-                        <span class="user-info-role" id="user-info-role-badge">super_admin</span>
+                        <span class="user-info-role" id="user-info-role-badge">network_admin</span>
                     </div>
                     <button class="btn-logout-icon" onclick="logout()" title="Sign Out">
                         <i data-lucide="log-out"></i>
@@ -334,6 +317,115 @@
                 </div>
             </section>
 
+            <!-- 1b. Inventory Tab (Trusted Assets) -->
+            <section id="tab-inventory" class="tab-pane">
+                <!-- Category Filter Bar -->
+                <div class="inventory-categories-bar">
+                    <button class="category-pill active" id="pill-all" onclick="setInventoryCategory('')">
+                        <i data-lucide="list"></i>
+                        <span>All Trusted</span>
+                        <span class="category-count" id="count-all">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-server" onclick="setInventoryCategory('server')">
+                        <i data-lucide="server"></i>
+                        <span>Servers</span>
+                        <span class="category-count" id="count-server">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-workstation" onclick="setInventoryCategory('workstation')">
+                        <i data-lucide="monitor"></i>
+                        <span>Laptops & PCs</span>
+                        <span class="category-count" id="count-workstation">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-mobile" onclick="setInventoryCategory('mobile')">
+                        <i data-lucide="smartphone"></i>
+                        <span>Phones & Tablets</span>
+                        <span class="category-count" id="count-mobile">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-printer" onclick="setInventoryCategory('printer')">
+                        <i data-lucide="printer"></i>
+                        <span>Printers</span>
+                        <span class="category-count" id="count-printer">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-router" onclick="setInventoryCategory('router')">
+                        <i data-lucide="network"></i>
+                        <span>Routers & Gateways</span>
+                        <span class="category-count" id="count-router">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-smart-tv" onclick="setInventoryCategory('smart-tv')">
+                        <i data-lucide="tv"></i>
+                        <span>Smart TVs</span>
+                        <span class="category-count" id="count-smart-tv">0</span>
+                    </button>
+                    <button class="category-pill" id="pill-generic" onclick="setInventoryCategory('generic')">
+                        <i data-lucide="help-circle"></i>
+                        <span>Other</span>
+                        <span class="category-count" id="count-generic">0</span>
+                    </button>
+                </div>
+
+                <div class="card table-card">
+                    <div class="table-header" style="flex-wrap: nowrap; gap: 8px;">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-inventory" autocomplete="new-password" name="search-inventory-query"
+                                placeholder="Search trusted inventory..." oninput="filterInventory()">
+                        </div>
+                        <div class="devices-filter-group" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                            <select id="inventory-dept-filter" class="filter-select" onchange="filterInventory()">
+                                <option value="">All Departments</option>
+                                <option value="None">None</option>
+                                <option value="IT">IT</option>
+                                <option value="HR">HR</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                            <button class="btn btn-secondary btn-export" id="btn-export-inventory" onclick="exportInventoryToCSV()">
+                                <i data-lucide="download"></i>
+                                <span>Export CSV</span>
+                            </button>
+                            <div class="view-mode-toggle" style="margin-left: 8px;">
+                                <button class="btn-toggle active" id="btn-view-table" onclick="setInventoryViewMode('table')" title="Table View">
+                                    <i data-lucide="layout-list"></i>
+                                </button>
+                                <button class="btn-toggle" id="btn-view-grid" onclick="setInventoryViewMode('grid')" title="Grid View">
+                                    <i data-lucide="layout-grid"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive" id="inventory-table-view">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-type">Type</th>
+                                    <th onclick="toggleInventorySort('hostname')" style="cursor: pointer; user-select: none;">
+                                        Hostname / Owner <span id="sort-icon-inv-hostname" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th onclick="toggleInventorySort('ip')" style="cursor: pointer; user-select: none;">
+                                        Network Address <span id="sort-icon-inv-ip" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th onclick="toggleInventorySort('vendor')" style="cursor: pointer; user-select: none;">
+                                        Vendor <span id="sort-icon-inv-vendor" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th>Security State</th>
+                                    <th>Open Ports</th>
+                                    <th onclick="toggleInventorySort('last_seen')" style="cursor: pointer; user-select: none;">
+                                        Last Seen <span id="sort-icon-inv-last_seen" style="color: var(--color-text-light);">↕</span>
+                                    </th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-devices-list-body">
+                                <!-- Loaded dynamically via Javascript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="inventory-grid-view" class="devices-grid" style="display: none;">
+                        <!-- Loaded dynamically via Javascript -->
+                    </div>
+                </div>
+            </section>
+
             <!-- 2. Users Tab -->
             <section id="tab-users" class="tab-pane">
                 <div class="users-header-row">
@@ -399,13 +491,50 @@
                 </div>
             </section>
 
-            <!-- 4. Audit Tab -->
+            <!-- Scan History Tab -->
+            <section id="tab-scan-history" class="tab-pane">
+                <div class="card table-card">
+                    <div class="table-header" style="flex-wrap: wrap; gap: 10px;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <label style="font-size:0.85rem; color:var(--color-text-muted); white-space:nowrap;">Scan Session:</label>
+                            <select id="scan-history-session-select" onchange="loadScanHistory()" class="filter-select" style="min-width:260px;">
+                                <option value="">— All Sessions —</option>
+                            </select>
+                            <span id="scan-history-session-info" style="font-size:0.8rem; color:var(--color-text-muted);"></span>
+                        </div>
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="search-scan-history" placeholder="Filter by IP, hostname or vendor..." oninput="filterScanHistory()" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Hostname</th>
+                                    <th>Vendor</th>
+                                    <th>OS Type</th>
+                                    <th>Status</th>
+                                    <th>Subnet</th>
+                                    <th>Discovered At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scan-history-list-body">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <section id="tab-audit" class="tab-pane">
                 <div class="card table-card">
                     <div class="table-header">
                         <div class="search-box">
                             <i data-lucide="search" class="search-icon"></i>
-                            <input type="text" id="search-audit" placeholder="Filter by operator, action or target..."
+                            <input type="text" id="search-audit" placeholder="Filter by network_operator, action or target..."
                                 oninput="filterAuditLogs()" autocomplete="new-password">
                         </div>
                         <div class="audit-filter-group">
@@ -799,7 +928,7 @@
                 <p style="font-size: 0.85rem; color: var(--color-text-light); margin-bottom: 1.25rem; line-height: 1.6;">
                     Your account is using a default or reset password. You must set a new password before continuing.
                 </p>
-                <div class="form-group">
+                <div class="form-group" style="display: none;">
                     <label for="force-current-pw">Current Password</label>
                     <input type="password" id="force-current-pw" placeholder="Your current (default) password" autocomplete="current-password">
                 </div>
@@ -957,8 +1086,8 @@
                         <label for="user-role">System Role</label>
                         <select id="user-role">
                             <option value="user">Department Staff</option>
-                            <option value="operator">IT Security Officer</option>
-                            <option value="super_admin">Network Administrator</option>
+                            <option value="network_operator">IT Security Officer</option>
+                            <option value="network_admin">Network Administrator</option>
                         </select>
                     </div>
                     <div class="form-group checkbox-group">
@@ -1210,6 +1339,19 @@
                 <div id="login-error-container" style="display: none; background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: var(--border-radius-md); padding: 10px 12px; margin-bottom: 16px; color: #dc2626; font-size: 13px; font-weight: 500; align-items: center; justify-content: center; gap: 8px;">
                     <i data-lucide="alert-circle" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
                     <span id="login-error-text"></span>
+                </div>
+                <!-- Account Locked Panel (shown on failed attempts lockout) -->
+                <div id="login-locked-panel" style="display: none; background: linear-gradient(135deg, #1e0a0a 0%, #2d0f0f 100%); border: 1px solid #7f1d1d; border-radius: var(--border-radius-md); padding: 16px; margin-bottom: 16px; text-align: center;">
+                    <i data-lucide="shield-off" style="width: 32px; height: 32px; color: #ef4444; margin-bottom: 8px;"></i>
+                    <div style="color: #ef4444; font-size: 14px; font-weight: 700; margin-bottom: 6px;">Account Locked</div>
+                    <div style="color: #fca5a5; font-size: 12px; line-height: 1.5; margin-bottom: 12px;">
+                        Your account has been locked.<br>
+                        Contact your <strong>Network Admin</strong> to recover access.
+                    </div>
+                    <div style="background: rgba(239,68,68,0.1); border: 1px solid #7f1d1d; border-radius: 6px; padding: 10px; font-size: 11px; color: #fca5a5;">
+                        <div style="margin-bottom: 4px;"><i data-lucide="mail" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> <strong>net.admin@reconnds.local</strong></div>
+                        <div><i data-lucide="user" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Network Admin &mdash; Alex Rivera</div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="login-username">Username</label>

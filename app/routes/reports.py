@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ScanReport])
 def list_reports(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     cursor = conn.cursor()
@@ -23,7 +23,7 @@ def list_reports(
 
 @router.get("/export/csv")
 def export_reports_csv(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Exports all scan reports as a downloadable CSV file."""
@@ -56,7 +56,7 @@ def export_reports_csv(
 
 @router.get("/export/devices-pdf")
 def export_devices_pdf(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """

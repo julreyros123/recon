@@ -12,9 +12,9 @@ router = APIRouter()
 
 @router.get("/", response_model=List[AuditLog])
 def list_audit_logs(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     action: Optional[str] = Query(None, description="Filter by action type (e.g. SCAN, REGISTER, POLICY, DELETE, AUTH)"),
-    username: Optional[str] = Query(None, description="Filter by operator username"),
+    username: Optional[str] = Query(None, description="Filter by network_operator username"),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     cursor = conn.cursor()
@@ -37,7 +37,7 @@ def list_audit_logs(
 
 @router.get("/export/csv")
 def export_audit_csv(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Exports all audit logs as a downloadable CSV file."""

@@ -95,7 +95,7 @@ class UserBase(BaseModel):
     username: str
     email: Optional[str] = None
     full_name: Optional[str] = None
-    role: str = "user"
+    role: str = "staff"
     is_active: bool = True
     allowed_ip: str = "*"
 

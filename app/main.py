@@ -20,6 +20,7 @@ from app.routes.devices import execute_background_scan
 from app.routes.cve import router as cve_router
 from app.routes.events import router as events_router
 from app.routes.network_alerts import router as network_alerts_router
+from app.routes.scan_history import router as scan_history_router
 from app.database.database import get_db_connection
 from app.scanner.snmp_scan import fetch_snmp_telemetry
 from app.routes.workstations import process_telemetry_report, TelemetryReport
@@ -252,3 +253,4 @@ app.include_router(workspaces_router, prefix="/api/workspaces", tags=["Workspace
 app.include_router(cve_router, prefix="/api/cve", tags=["CVE"])
 app.include_router(events_router, prefix="/api/events", tags=["Events"])
 app.include_router(network_alerts_router, prefix="/api/network-alerts", tags=["Network Alerts"])
+app.include_router(scan_history_router, prefix="/api/scan-history", tags=["Scan History"])

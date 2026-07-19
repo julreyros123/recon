@@ -80,7 +80,7 @@ def get_workspace(
 @router.post("/")
 def create_workspace(
     ws: WorkspaceCreate, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Create a new workspace. Super Admin or Operator."""
@@ -111,7 +111,7 @@ def create_workspace(
 def update_workspace(
     workspace_id: int, 
     data: WorkspaceUpdate, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Update a workspace. Super Admin or Operator."""
@@ -166,7 +166,7 @@ def update_workspace(
 @router.delete("/{workspace_id}")
 def delete_workspace(
     workspace_id: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Delete a workspace. Super Admin only."""
@@ -199,7 +199,7 @@ def delete_workspace(
 def add_device_to_workspace(
     workspace_id: int, 
     device_id: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Add a device to a workspace."""
@@ -240,7 +240,7 @@ def add_device_to_workspace(
 def remove_device_from_workspace(
     workspace_id: int, 
     device_id: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Remove a device from a workspace."""

@@ -51,7 +51,7 @@ def _row_with_user(row: dict, cursor) -> dict:
 
 @router.get("/")
 def list_employees(
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Returns all employee HR profiles."""
@@ -63,7 +63,7 @@ def list_employees(
 @router.get("/{employee_id_pk}")
 def get_employee(
     employee_id_pk: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Returns a single employee profile by internal ID."""
@@ -77,7 +77,7 @@ def get_employee(
 @router.post("/")
 def create_employee(
     emp: EmployeeCreate, 
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Register a new HR employee profile. Super Admin only."""
@@ -111,7 +111,7 @@ def create_employee(
 def update_employee(
     employee_id_pk: int, 
     data: EmployeeUpdate, 
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Update an employee profile. Super Admin only."""
@@ -166,7 +166,7 @@ def update_employee(
 @router.delete("/{employee_id_pk}")
 def delete_employee(
     employee_id_pk: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Delete an employee profile. Super Admin only."""
@@ -199,7 +199,7 @@ def delete_employee(
 def assign_device_to_employee(
     employee_id_pk: int, 
     device_id: int, 
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     """Assign a network device (PC/workstation) to an employee as their primary device."""

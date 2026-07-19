@@ -16,6 +16,10 @@ let activeWorkstationId = null;
 let activeDetailsTab = 'processes';
 let workstationsPollingInterval = null;
 let activeTab = 'devices';
+let currentInventoryCategory = '';
+let inventoryViewMode = 'table';
+let inventorySortField = 'last_seen';
+let inventorySortOrder = 'desc';
 let deviceSortField = 'last_seen';
 let deviceSortOrder = 'desc';
 let isScanning = false;
@@ -188,8 +192,8 @@ function updateSidebarUserInfo() {
     if (nameEl) nameEl.textContent = displayName;
     if (roleEl) {
         const cleanRoleMap = {
-            'super_admin': 'System Admin',
-            'operator': 'Security Officer',
+            'network_admin': 'System Admin',
+            'network_operator': 'Security Officer',
             'Staff': 'Staff Member',
             'user': 'Staff Member'
         };
@@ -226,6 +230,7 @@ async function fetchDevices() {
 
         updateSortIcons();
         filterDevices();
+        filterInventory();
         renderTrustedSidebar(devicesState);
         updateMetrics();
     } catch (error) {
@@ -234,7 +239,7 @@ async function fetchDevices() {
     }
 }
 
-// Fetch all registered operators
+// Fetch all registered network_operators
 async function fetchUsers() {
     try {
         const response = await fetch("/api/users/", { headers: getAuthHeaders() });
@@ -249,7 +254,7 @@ async function fetchUsers() {
         renderUsers(usersState);
     } catch (error) {
         console.error("Error fetching users:", error);
-        showToast("Error loading operator list.");
+        showToast("Error loading network_operator list.");
     }
 }
 
@@ -326,7 +331,474 @@ function renderTrustedSidebar(devices) {
     lucide.createIcons();
 }
 
-// Render devices in the HTML table
+// Helper functions for categorized Inventory tab
+function setInventoryCategory(category) {
+    currentInventoryCategory = category;
+    
+    // Toggle active class on pills
+    document.querySelectorAll('.category-pill').forEach(pill => {
+        pill.classList.remove('active');
+    });
+    
+    const activePillId = category ? `pill-${category}` : 'pill-all';
+    const activePill = document.getElementById(activePillId);
+    if (activePill) {
+        activePill.classList.add('active');
+    }
+    
+    filterInventory();
+}
+
+function setInventoryViewMode(mode) {
+    inventoryViewMode = mode;
+    
+    // Toggle active class on toggle buttons
+    document.getElementById('btn-view-table')?.classList.toggle('active', mode === 'table');
+    document.getElementById('btn-view-grid')?.classList.toggle('active', mode === 'grid');
+    
+    // Toggle visibility of containers
+    const tableView = document.getElementById('inventory-table-view');
+    const gridView = document.getElementById('inventory-grid-view');
+    
+    if (tableView && gridView) {
+        if (mode === 'table') {
+            tableView.style.display = 'block';
+            gridView.style.display = 'none';
+        } else {
+            tableView.style.display = 'none';
+            gridView.style.display = 'grid';
+        }
+    }
+    
+    filterInventory();
+}
+
+function updateInventoryCategoryCounts(list) {
+    const counts = {
+        all: list.length,
+        server: 0,
+        workstation: 0,
+        mobile: 0,
+        printer: 0,
+        router: 0,
+        'smart-tv': 0,
+        generic: 0
+    };
+
+    list.forEach(dev => {
+        const type = dev.os_type || 'generic';
+        if (counts[type] !== undefined) {
+            counts[type]++;
+        } else {
+            counts.generic++;
+        }
+    });
+
+    // Update count labels in DOM
+    for (const [key, count] of Object.entries(counts)) {
+        const el = document.getElementById(`count-${key}`);
+        if (el) el.innerText = count;
+    }
+}
+
+function filterInventory() {
+    const query = (document.getElementById("search-inventory")?.value || "").toLowerCase().trim();
+    const deptFilter = document.getElementById("inventory-dept-filter")?.value || "";
+
+    // 1. Filter out only Trusted devices first
+    let baseTrusted = devicesState.filter(dev => dev.trust_level === 'Trusted' || dev.is_trusted === 1);
+
+    // 2. Apply search query and department filter
+    let baseFiltered = baseTrusted.filter(dev => {
+        const matchQuery = !query ||
+            (dev.ip && dev.ip.toLowerCase().includes(query)) ||
+            (dev.hostname && dev.hostname.toLowerCase().includes(query)) ||
+            (dev.mac && dev.mac.toLowerCase().includes(query)) ||
+            (dev.vendor && dev.vendor.toLowerCase().includes(query));
+
+        const matchDept = !deptFilter || dev.department === deptFilter;
+
+        return matchQuery && matchDept;
+    });
+
+    // 3. Update Inventory category pills count dynamically
+    updateInventoryCategoryCounts(baseFiltered);
+
+    // 4. Filter by selected category pill
+    let filtered = baseFiltered;
+    if (currentInventoryCategory) {
+        filtered = baseFiltered.filter(dev => {
+            const devType = dev.os_type || 'generic';
+            if (currentInventoryCategory === 'generic') {
+                return devType === 'generic' || !['server', 'workstation', 'router', 'printer', 'smart-tv', 'mobile'].includes(devType);
+            }
+            return devType === currentInventoryCategory;
+        });
+    }
+
+    // 5. Apply inventory-specific sorting
+    filtered.sort((a, b) => {
+        let valA = a[inventorySortField];
+        let valB = b[inventorySortField];
+
+        if (inventorySortField === 'ip') {
+            const partsA = (valA || '').split('.').map(Number);
+            const partsB = (valB || '').split('.').map(Number);
+            for (let i = 0; i < 4; i++) {
+                const octetA = partsA[i] || 0;
+                const octetB = partsB[i] || 0;
+                if (octetA !== octetB) {
+                    return inventorySortOrder === 'asc' ? octetA - octetB : octetB - octetA;
+                }
+            }
+            return 0;
+        }
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA === null || valA === undefined) valA = '';
+        if (valB === null || valB === undefined) valB = '';
+
+        if (valA < valB) return inventorySortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return inventorySortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderInventory(filtered);
+}
+
+function renderInventoryGrid(devicesList) {
+    const gridContainer = document.getElementById("inventory-grid-view");
+    if (!gridContainer) return;
+
+    // Filter list based on Staff role
+    let listToRender = devicesList;
+    if (currentRole === 'Staff') {
+        listToRender = devicesList.filter(dev => dev.owner_name === 'Jane Doe');
+    }
+
+    if (listToRender.length === 0) {
+        gridContainer.innerHTML = `
+            <div style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; border: 1px dashed var(--color-border); border-radius: var(--border-radius-lg); background-color: var(--gray-50); color: var(--color-text-light);">
+                <i data-lucide="help-circle" style="width: 36px; height: 36px; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p style="font-size: 13px; font-weight: 500;">No devices found in this view.</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
+
+    gridContainer.innerHTML = listToRender.map(dev => {
+        const typeIcon = deviceTypeIcons[dev.os_type] || 'help-circle';
+        const formattedDate = formatFriendlyTime(dev.last_seen);
+        
+        let portsList = [];
+        try {
+            portsList = dev.open_ports ? JSON.parse(dev.open_ports) : [];
+        } catch (e) {}
+
+        const devJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dev))));
+
+        let trustBadge = `<span class="badge badge-active"><span class="bullet-indicator"></span>Trusted</span>`;
+        const statusClass = dev.status === 'active' ? 'active' : 'inactive';
+        const statusText = dev.status === 'active' ? 'Online' : 'Offline';
+
+        // Ports configuration
+        let portsHtml = '';
+        if (portsList.length > 0) {
+            portsHtml = portsList.slice(0, 4).map(p => {
+                const isHighRisk = HIGH_RISK_PORTS.includes(p.port);
+                const badgeClass = isHighRisk ? 'port-badge-pill high-risk' : 'port-badge-pill';
+                return `<span class="${badgeClass}">${p.port} (${p.service})</span>`;
+            }).join('');
+            if (portsList.length > 4) {
+                portsHtml += `<span class="port-badge-more-pill" onclick="viewPorts('${devJsonBase64}')">+${portsList.length - 4} more</span>`;
+            }
+        } else if (dev.status === 'active' && currentRole !== 'Staff') {
+            portsHtml = `<span class="scan-needed-link" onclick="runDevicePortScan(${dev.id})">Scan ports</span>`;
+        } else {
+            portsHtml = `<span class="no-ports">None</span>`;
+        }
+
+        // Actions
+        let actionsHtml = '';
+        if (currentRole === 'Staff') {
+            actionsHtml = `<span class="read-only-label">Read-Only</span>`;
+        } else {
+            const deleteBtnHtml = currentRole === 'network_admin'
+                ? `<button class="btn btn-secondary btn-danger-text" style="padding: 4px 8px; font-size: 11px; border-color: var(--color-border); color: #ef4444;" onclick="deleteDevice(${dev.id})"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>`
+                : '';
+            const trustButtonText = dev.is_trusted ? 'Revoke' : 'Trust';
+            const trustButtonClass = dev.is_trusted ? 'btn btn-secondary trusted' : 'btn btn-secondary';
+            
+            actionsHtml = `
+                <button class="${trustButtonClass}" style="padding: 4px 8px; font-size: 11px;" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="runDevicePortScan(${dev.id})">Scan</button>
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="editDevice('${devJsonBase64}')">Edit</button>
+                ${deleteBtnHtml}
+            `;
+        }
+
+        return `
+            <div class="device-card" data-device-ip="${dev.ip}">
+                <div class="device-card-header">
+                    <div class="device-card-title">
+                        <span class="device-card-name" title="${dev.hostname || 'Unknown'}">${dev.hostname || 'Unknown'}</span>
+                        <code class="device-card-ip">${dev.ip}</code>
+                    </div>
+                    <div class="device-card-icon-wrap" title="Type: ${dev.os_type || 'generic'}">
+                        <i data-lucide="${typeIcon}"></i>
+                    </div>
+                </div>
+                
+                <div class="device-card-details">
+                    <div class="device-card-detail-item">
+                        <span class="device-card-detail-label">Status</span>
+                        <span class="device-card-detail-value">
+                            <span class="device-card-status-dot ${statusClass}"></span>
+                            ${statusText}
+                        </span>
+                    </div>
+                    <div class="device-card-detail-item">
+                        <span class="device-card-detail-label">MAC Address</span>
+                        <span class="device-card-detail-value" style="font-family: monospace;">${dev.mac || 'N/A'}</span>
+                    </div>
+                    <div class="device-card-detail-item">
+                        <span class="device-card-detail-label">Vendor</span>
+                        <span class="device-card-detail-value">${dev.vendor || 'Unknown'}</span>
+                    </div>
+                    <div class="device-card-detail-item">
+                        <span class="device-card-detail-label">Trust</span>
+                        <span class="device-card-detail-value">${trustBadge}</span>
+                    </div>
+                    <div class="device-card-detail-item" style="flex-direction: column; gap: 4px; align-items: flex-start; margin-top: 4px;">
+                        <span class="device-card-detail-label">Open Ports</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; width: 100%;">
+                            ${portsHtml}
+                        </div>
+                    </div>
+                    <div class="device-card-detail-item" style="margin-top: 4px;">
+                        <span class="device-card-detail-label">Last Seen</span>
+                        <span class="device-card-detail-value">${formattedDate}</span>
+                    </div>
+                </div>
+
+                <div class="device-card-actions">
+                    ${actionsHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    lucide.createIcons();
+}
+
+function toggleInventorySort(field) {
+    if (inventorySortField === field) {
+        inventorySortOrder = inventorySortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        inventorySortField = field;
+        inventorySortOrder = 'asc';
+    }
+    updateInventorySortIcons();
+    filterInventory();
+}
+
+function updateInventorySortIcons() {
+    const fields = ['hostname', 'ip', 'vendor', 'last_seen'];
+    fields.forEach(f => {
+        const el = document.getElementById(`sort-icon-inv-${f}`);
+        if (el) {
+            if (inventorySortField === f) {
+                el.innerText = inventorySortOrder === 'asc' ? '▲' : '▼';
+                el.style.color = 'var(--gray-800)';
+            } else {
+                el.innerText = '↕';
+                el.style.color = 'var(--color-text-light)';
+            }
+        }
+    });
+}
+
+function renderInventory(devicesList) {
+    if (inventoryViewMode === 'grid') {
+        renderInventoryGrid(devicesList);
+        return;
+    }
+
+    const listBody = document.getElementById("inventory-devices-list-body");
+    if (!listBody) return;
+
+    // Filter list based on Staff role
+    let listToRender = devicesList;
+    if (currentRole === 'Staff') {
+        listToRender = devicesList.filter(dev => dev.owner_name === 'Jane Doe');
+    }
+
+    if (listToRender.length === 0) {
+        listBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="empty-state-row">
+                    <i data-lucide="help-circle" class="empty-state-icon"></i>
+                    <p class="empty-state-text">No trusted assets found matching filters.</p>
+                </td>
+            </tr>
+        `;
+        lucide.createIcons();
+        return;
+    }
+
+    listBody.innerHTML = listToRender.map(dev => {
+        const formattedDate = formatFriendlyTime(dev.last_seen);
+        
+        let portsList = [];
+        try {
+            portsList = dev.open_ports ? JSON.parse(dev.open_ports) : [];
+        } catch (e) {}
+
+        const typeIcon = deviceTypeIcons[dev.os_type] || 'help-circle';
+
+        let portsHtml = '<span class="no-ports">None</span>';
+        const devJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dev))));
+
+        if (portsList.length > 0) {
+            const displayPorts = portsList.slice(0, 2);
+            let pills = displayPorts.map(p => {
+                const isHighRisk = HIGH_RISK_PORTS.includes(p.port);
+                const portClass = isHighRisk ? 'port-badge-pill high-risk' : 'port-badge-pill';
+                const pillTitle = isHighRisk ? `${p.service} (Exposed High-Risk!)` : p.service;
+                return `<span class="${portClass}" title="${pillTitle}">${p.port}</span>`;
+            }).join('');
+
+            if (portsList.length > 2) {
+                pills += `<span class="port-badge-more-pill" onclick="viewPorts('${devJsonBase64}')">+${portsList.length - 2}</span>`;
+            }
+            portsHtml = `<div class="ports-cell-wrapper">${pills}</div>`;
+        } else if (dev.status === 'active' && currentRole !== 'Staff') {
+            portsHtml = `<span class="scan-needed-link" onclick="runDevicePortScan(${dev.id})">Scan needed</span>`;
+        }
+
+        let hostnameHtml = dev.hostname || 'Unknown';
+        hostnameHtml = `<span class="host-trusted"><i data-lucide="shield-check" class="icon-trusted"></i> ${hostnameHtml}</span>`;
+
+        let ownerDeptHtml = "";
+        if (dev.owner_name && dev.owner_name !== "None") {
+            ownerDeptHtml = `<div class="device-meta-assigned">Owner: ${dev.owner_name} (${dev.department || 'N/A'})</div>`;
+        } else {
+            ownerDeptHtml = `<div class="device-meta-unassigned">Unassigned Device</div>`;
+        }
+
+        const trustButtonText = dev.is_trusted ? 'Revoke Trust' : 'Trust Device';
+        const trustButtonClass = dev.is_trusted ? 'btn-trust trusted' : 'btn-trust';
+
+        let trustLevelHtml = `<span class="badge badge-active"><span class="bullet-indicator"></span>Trusted</span>`;
+
+        let patchHtml = '';
+        if (dev.firmware_eol) {
+            patchHtml = `<span class="patch-badge patch-eol" title="End-of-Life: no patches">&#x1F534; EOL</span>`;
+        } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version !== dev.latest_firmware) {
+            patchHtml = `<span class="patch-badge patch-needed" title="Installed: ${dev.firmware_version} | Latest: ${dev.latest_firmware}">&#x1F7E1; Needs Patch</span>`;
+        } else if (dev.firmware_version && dev.latest_firmware && dev.firmware_version === dev.latest_firmware) {
+            patchHtml = `<span class="patch-badge patch-ok" title="Up to date: ${dev.firmware_version}">&#x1F7E2; Up to Date</span>`;
+        } else {
+            patchHtml = `<span class="patch-badge patch-unknown" title="No version info">&#x26AB; Unknown</span>`;
+        }
+
+        let actionsCellHtml = "";
+        if (currentRole === 'Staff') {
+            actionsCellHtml = `<span class="read-only-label">Read-Only</span>`;
+        } else {
+            const deleteBtnHtml = currentRole === 'network_admin'
+                ? `<button class="dropdown-item btn-danger-text" onclick="deleteDevice(${dev.id})">Delete Device</button>`
+                : '';
+
+            actionsCellHtml = `
+                <div class="dropdown-actions">
+                    <button class="btn-dropdown-trigger" onclick="toggleActionsDropdown(this, event)" title="Device Actions">
+                        <i data-lucide="more-horizontal"></i>
+                    </button>
+                    <div class="dropdown-menu-content">
+                        <button class="${trustButtonClass}" onclick="toggleDeviceTrust(${dev.id})">${trustButtonText}</button>
+                        <button class="btn-scan-ports" onclick="runDevicePortScan(${dev.id})">Scan Ports</button>
+                        <button class="btn-edit-text" onclick="editDevice('${devJsonBase64}')">Edit Device</button>
+                        ${deleteBtnHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <tr class="trusted-row" data-device-ip="${dev.ip}">
+                <td>
+                    <div class="device-type-icon-wrapper" title="Classification: ${dev.os_type || 'generic'}">
+                        <i data-lucide="${typeIcon}"></i>
+                    </div>
+                </td>
+                <td>
+                    <div>
+                        ${hostnameHtml}
+                        ${ownerDeptHtml}
+                    </div>
+                </td>
+                <td>
+                    <div><code class="code-ip">${dev.ip}</code></div>
+                    <div><code class="code-mac" style="font-size: 11px; color: var(--color-text-muted);">${dev.mac || 'N/A'}</code></div>
+                </td>
+                <td>
+                    <div class="text-xs font-bold text-slate-800">${dev.vendor || 'Unknown Brand'}</div>
+                    ${dev.model ? `<div class="text-[10px] text-slate-500 mt-0.5">${dev.model}</div>` : ''}
+                </td>
+                <td>
+                    <div style="margin-bottom: 4px;">${trustLevelHtml}</div>
+                    <div>${patchHtml}</div>
+                </td>
+                <td>${portsHtml}</td>
+                <td class="td-last-seen">${formattedDate}</td>
+                <td class="actions-col">${actionsCellHtml}</td>
+            </tr>
+        `;
+    }).join('');
+
+    lucide.createIcons();
+}
+
+function exportInventoryToCSV() {
+    const table = document.querySelector("#inventory-table-view table");
+    if (!table) return;
+
+    let csvContent = "";
+    const rows = table.querySelectorAll("tr");
+
+    rows.forEach(row => {
+        const cols = row.querySelectorAll("td, th");
+        const rowData = [];
+
+        cols.forEach((col, index) => {
+            if (index === 0 || index === cols.length - 1) return;
+
+            let text = col.innerText.replace(/(\r\n|\n|\r)/gm, " ").trim();
+            text = text.replace(/"/g, '""');
+            rowData.push(`"${text}"`);
+        });
+
+        if (rowData.length > 0) {
+            csvContent += rowData.join(",") + "\r\n";
+        }
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Knowsec_Trusted_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Render devices in the HTML table or grid
 function renderDevices(devices) {
     const listBody = document.getElementById("devices-list-body");
     if (!listBody) return;
@@ -489,7 +961,7 @@ function renderDevices(devices) {
             if (currentRole === 'Staff') {
                 actionsCellHtml = `<span class="read-only-label">Read-Only Mode</span>`;
             } else {
-                const deleteBtnHtml = currentRole === 'super_admin'
+                const deleteBtnHtml = currentRole === 'network_admin'
                     ? `<button class="btn-danger-text" onclick="deleteDevice(${dev.id})">Delete</button>`
                     : '';
 
@@ -563,14 +1035,14 @@ function renderUsers(users) {
     }
 
     const roleBadgeMap = {
-        'super_admin': 'badge-active',
-        'operator': 'badge-role',
+        'network_admin': 'badge-active',
+        'network_operator': 'badge-role',
         'user': 'badge-unknown',
         'administrator': 'badge-active',   // legacy compat
     };
     const roleLabelMap = {
-        'super_admin': 'System Administrator',
-        'operator': 'IT Security Officer',
+        'network_admin': 'System Administrator',
+        'network_operator': 'IT Security Officer',
         'user': 'Staff Member',
         'administrator': 'System Administrator',   // legacy
     };
@@ -578,10 +1050,10 @@ function renderUsers(users) {
     listBody.innerHTML = users.map(user => {
         const roleClass = roleBadgeMap[user.role] || 'badge-role';
         const roleLabel = roleLabelMap[user.role] || user.role;
-        const deleteButton = currentRole === 'super_admin'
+        const deleteButton = currentRole === 'network_admin'
             ? `<button class="btn-danger-text" onclick="deleteUser(${user.id})">Remove</button>`
             : `<span class="users-locked">Locked</span>`;
-        const resetButton = currentRole === 'super_admin'
+        const resetButton = currentRole === 'network_admin'
             ? `<button class="btn-edit-text" onclick="resetUserPassword(${user.id}, '${user.username}')" style="margin-right: 8px;">Reset PW</button>`
             : '';
         const lockBadge = user.locked_until
@@ -589,7 +1061,7 @@ function renderUsers(users) {
             : (user.is_active
                 ? `<span class="badge badge-active">Active</span>`
                 : `<span class="badge badge-inactive">Disabled</span>`);
-        const unlockBtn = (user.locked_until && currentRole === 'super_admin')
+        const unlockBtn = (user.locked_until && currentRole === 'network_admin')
             ? `<button class="btn-assign-device" onclick="unlockUser(${user.id})">Unlock</button>`
             : '';
 
@@ -732,9 +1204,11 @@ function switchTab(tabId) {
     const activeBtnMap = {
         'dashboard': 'btn-nav-dashboard',
         'devices': 'btn-nav-devices',
+        'inventory': 'btn-nav-inventory',
         'users': 'btn-nav-users',
         'reports': 'btn-nav-reports',
         'audit': 'btn-nav-audit',
+        'scan-history': 'btn-nav-scan-history',
         'workstations': 'btn-nav-workstations',
         'threat-alerts': 'btn-nav-threat-alerts',
         'employees': 'btn-nav-employees',
@@ -768,11 +1242,17 @@ function switchTab(tabId) {
             if (headerActions) headerActions.style.display = "flex";
             if (btnAddDevice) btnAddDevice.style.display = "inline-flex";
             if (btnTriggerScan) btnTriggerScan.style.display = "inline-flex";
-            if (btnClearDevices) btnClearDevices.style.display = currentRole === 'super_admin' ? "inline-flex" : "none";
+            if (btnClearDevices) btnClearDevices.style.display = currentRole === 'network_admin' ? "inline-flex" : "none";
         } else {
             if (headerActions) headerActions.style.display = "none";
         }
         statsRow.style.display = "grid";
+    } else if (tabId === 'inventory') {
+        headerTitle.innerText = "Assets Inventory";
+        headerSubtitle.innerText = "Directory of authorized and trusted network devices.";
+        if (headerActions) headerActions.style.display = "none";
+        statsRow.style.display = "none";
+        filterInventory();
     } else if (tabId === 'users') {
         headerTitle.innerText = "Access Controls";
         headerSubtitle.innerText = "Manage system user accounts and role assignments.";
@@ -797,7 +1277,7 @@ function switchTab(tabId) {
         statsRow.style.display = "none";
     } else if (tabId === 'audit') {
         headerTitle.innerText = "Security Audit Logs";
-        headerSubtitle.innerText = "Historical record of system activities, scan completions, and operator reviews.";
+        headerSubtitle.innerText = "Historical record of system activities, scan completions, and network_operator reviews.";
         headerActions.style.display = "none";
         statsRow.style.display = "none";
         fetchAuditLogs();
@@ -821,6 +1301,12 @@ function switchTab(tabId) {
         workstationsPollingInterval = setInterval(() => {
             fetchWorkstationAlerts();
         }, 4000);
+    } else if (tabId === 'scan-history') {
+        headerTitle.innerText = "Scan History";
+        headerSubtitle.innerText = "Full archive of all devices discovered across every past scan session.";
+        if (headerActions) headerActions.style.display = "none";
+        statsRow.style.display = "none";
+        loadScanHistorySessions();
     }
 }
 
@@ -922,6 +1408,8 @@ async function handleLoginSubmit(event) {
 
     const errorContainer = document.getElementById("login-error-container");
     if (errorContainer) errorContainer.style.display = "none";
+    const lockedPanel = document.getElementById("login-locked-panel");
+    if (lockedPanel) lockedPanel.style.display = "none";
 
     const btn = document.getElementById("btn-login");
     if (btn) { btn.disabled = true; btn.innerHTML = `<span>Signing In...</span>`; }
@@ -935,6 +1423,22 @@ async function handleLoginSubmit(event) {
 
         if (!response.ok) {
             const err = await response.json();
+            // HTTP 423 = account permanently locked
+            if (response.status === 423 || err.detail === 'ACCOUNT_LOCKED') {
+                const lockedPanel = document.getElementById('login-locked-panel');
+                const errorContainer = document.getElementById('login-error-container');
+                if (errorContainer) errorContainer.style.display = 'none';
+                if (lockedPanel) {
+                    lockedPanel.style.display = 'block';
+                    if (window.lucide) lucide.createIcons();
+                }
+                // Disable the login form inputs and button permanently
+                const btn2 = document.getElementById('btn-login');
+                if (btn2) { btn2.disabled = true; btn2.innerHTML = `<span>Account Locked</span>`; }
+                document.getElementById('login-username').disabled = true;
+                document.getElementById('login-password').disabled = true;
+                return; // stop further processing
+            }
             throw new Error(err.detail || "Authentication failed");
         }
 
@@ -942,7 +1446,7 @@ async function handleLoginSubmit(event) {
 
         authToken = data.access_token;
         currentUsername = data.username;
-        currentRole = data.role === 'user' ? 'Staff' : data.role;
+        currentRole = data.role === 'staff' ? 'Staff' : data.role;
         currentFullName = data.full_name || data.username;
 
         sessionStorage.setItem("authToken", authToken);
@@ -961,8 +1465,15 @@ async function handleLoginSubmit(event) {
             // Force password change before allowing access
             const loginOverlay = document.getElementById("login-overlay");
             if (loginOverlay) loginOverlay.classList.remove("active");
+            
+            // Auto-fill the current password input with the password they just logged in with
+            const currentPwInput = document.getElementById('force-current-pw');
+            if (currentPwInput) {
+                currentPwInput.value = passwordInput;
+            }
+            
             document.getElementById('modal-force-change-pw').classList.add('active');
-            setTimeout(() => document.getElementById('force-current-pw')?.focus(), 100);
+            setTimeout(() => document.getElementById('force-new-pw')?.focus(), 100);
             showToast('Security notice: Please set a new password to continue.', 5000, 'warning');
         } else {
             showToast(`Access granted. Welcome, ${currentFullName}.`);
@@ -1047,9 +1558,9 @@ async function submitPin() {
 }
 
 function applyRoleAccessControl() {
-    const isSuperAdmin = currentRole === 'super_admin';
-    const isOperator = currentRole === 'operator';
-    const isUser = currentRole === 'user' || currentRole === 'Staff';
+    const isSuperAdmin = currentRole === 'network_admin';
+    const isOperator = currentRole === 'network_operator';
+    const isUser = currentRole === 'staff' || currentRole === 'Staff';
 
     const show = (id, visible) => {
         const el = document.getElementById(id);
@@ -1069,13 +1580,13 @@ function applyRoleAccessControl() {
     show('btn-add-workspace', isSuperAdmin || isOperator);
 
     if (isUser) {
-        // Staff: devices and workstations only
-        if (!['devices', 'workstations'].includes(activeTab)) {
-            switchTab('devices');
+        // Staff: inventory and workstations only
+        if (!['inventory', 'workstations'].includes(activeTab)) {
+            switchTab('inventory');
         }
     } else if (isOperator) {
         // Operator: no Users (Access Control) tab
-        if (activeTab === 'users') switchTab('devices');
+        if (activeTab === 'users') switchTab('inventory');
     }
 }
 
@@ -1293,7 +1804,7 @@ async function saveUser(event) {
 
 // Delete user callback
 async function deleteUser(userId) {
-    if (!confirm("Remove this operator's console access credentials?")) return;
+    if (!confirm("Remove this network_operator's console access credentials?")) return;
 
     try {
         const response = await fetch(`/api/users/${userId}`, {
@@ -1306,14 +1817,14 @@ async function deleteUser(userId) {
         showToast("Operator removed.");
         fetchUsers();
     } catch (error) {
-        console.error("Error deleting operator:", error);
-        showToast("Failed to remove operator.");
+        console.error("Error deleting network_operator:", error);
+        showToast("Failed to remove network_operator.");
     }
 }
 
-// Reset operator password callback
+// Reset network_operator password callback
 async function resetUserPassword(userId, username) {
-    if (!confirm(`Are you sure you want to reset the password for operator '${username}' back to the default '${username}123'?`)) return;
+    if (!confirm(`Are you sure you want to reset the password for network_operator '${username}' back to the default '${username}123'?`)) return;
 
     try {
         const response = await fetch(`/api/users/${userId}/reset-password`, {
@@ -1632,7 +2143,6 @@ function filterDevices() {
         let valB = b[deviceSortField];
 
         if (deviceSortField === 'ip') {
-            // Natural IP sorting
             const partsA = (valA || '').split('.').map(Number);
             const partsB = (valB || '').split('.').map(Number);
             for (let i = 0; i < 4; i++) {
@@ -1645,11 +2155,9 @@ function filterDevices() {
             return 0;
         }
 
-        // Handle case insensitivity for strings
         if (typeof valA === 'string') valA = valA.toLowerCase();
         if (typeof valB === 'string') valB = valB.toLowerCase();
 
-        // Handle null values
         if (valA === null || valA === undefined) valA = '';
         if (valB === null || valB === undefined) valB = '';
 
@@ -2722,7 +3230,7 @@ function renderEmployees(employees) {
         return;
     }
 
-    const isSuperAdmin = currentRole === 'super_admin';
+    const isSuperAdmin = currentRole === 'network_admin';
 
     listBody.innerHTML = employees.map(emp => {
         const statusBadge = emp.is_active
@@ -2850,8 +3358,8 @@ function renderWorkspaces(workspaces) {
         return;
     }
 
-    const isSuperAdmin = currentRole === 'super_admin';
-    const isOperator = currentRole === 'operator';
+    const isSuperAdmin = currentRole === 'network_admin';
+    const isOperator = currentRole === 'network_operator';
     const canEdit = isSuperAdmin || isOperator;
 
     grid.innerHTML = workspaces.map(ws => {
@@ -3642,3 +4150,120 @@ function copyCliString() {
     showToast("Deployment instruction copied to clipboard.");
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCAN HISTORY
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _scanHistoryAllRows = [];
+
+async function loadScanHistorySessions() {
+    try {
+        const resp = await fetch('/api/scan-history/sessions?limit=100', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!resp.ok) return;
+        const sessions = await resp.json();
+
+        const sel = document.getElementById('scan-history-session-select');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">— All Sessions —</option>';
+        sessions.forEach(s => {
+            const dt = s.timestamp ? new Date(s.timestamp + 'Z').toLocaleString() : 'Unknown';
+            const label = `${dt} — ${s.summary || 'Scan #' + s.id} (${s.devices_found || 0} devices)`;
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = label;
+            sel.appendChild(opt);
+        });
+
+        // Auto-select the most recent session
+        if (sessions.length > 0) {
+            sel.value = sessions[0].id;
+        }
+        await loadScanHistory();
+    } catch (e) {
+        console.error('Failed to load scan sessions:', e);
+    }
+}
+
+async function loadScanHistory() {
+    const sel = document.getElementById('scan-history-session-select');
+    const scanId = sel ? sel.value : '';
+    const infoEl = document.getElementById('scan-history-session-info');
+
+    const url = scanId
+        ? `/api/scan-history/?scan_id=${scanId}&limit=500`
+        : '/api/scan-history/?limit=500';
+
+    try {
+        const resp = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!resp.ok) {
+            _scanHistoryAllRows = [];
+            renderScanHistoryTable([]);
+            return;
+        }
+        const rows = await resp.json();
+        _scanHistoryAllRows = rows;
+
+        if (infoEl) {
+            infoEl.textContent = rows.length > 0
+                ? `${rows.length} device${rows.length !== 1 ? 's' : ''} discovered`
+                : 'No records found.';
+        }
+        renderScanHistoryTable(rows);
+    } catch (e) {
+        console.error('Failed to load scan history:', e);
+        renderScanHistoryTable([]);
+    }
+}
+
+function renderScanHistoryTable(rows) {
+    const tbody = document.getElementById('scan-history-list-body');
+    if (!tbody) return;
+
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--color-text-muted);">
+            <i data-lucide="history" style="width:32px;height:32px;margin-bottom:8px;display:block;margin-inline:auto;"></i>
+            No scan history records found. Run a scan to populate history.
+        </td></tr>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const statusClass = r.status === 'active' ? 'status-badge active' : 'status-badge inactive';
+        const dt = r.discovered_at ? new Date(r.discovered_at + 'Z').toLocaleString() : '—';
+        const osIcon = {
+            'server': '🖥️', 'router': '📡', 'printer': '🖨️', 'mobile': '📱',
+            'laptop': '💻', 'pc': '🖥️', 'workstation': '🖥️', 'smart-tv': '📺'
+        }[r.os_type] || '❓';
+        return `<tr>
+            <td><code style="font-size:0.8rem;">${r.ip || '—'}</code></td>
+            <td><code style="font-size:0.75rem; color:var(--color-text-muted);">${r.mac || '—'}</code></td>
+            <td>${r.hostname || '<span style="color:var(--color-text-muted);">Unknown</span>'}</td>
+            <td>${r.vendor || '—'}</td>
+            <td>${osIcon} ${r.os_type || 'generic'}</td>
+            <td><span class="${statusClass}">${r.status || 'unknown'}</span></td>
+            <td><code style="font-size:0.75rem;">${r.subnet || '—'}</code></td>
+            <td style="font-size:0.8rem; color:var(--color-text-muted);">${dt}</td>
+        </tr>`;
+    }).join('');
+}
+
+function filterScanHistory() {
+    const q = (document.getElementById('search-scan-history')?.value || '').toLowerCase();
+    if (!q) {
+        renderScanHistoryTable(_scanHistoryAllRows);
+        return;
+    }
+    const filtered = _scanHistoryAllRows.filter(r =>
+        (r.ip || '').toLowerCase().includes(q) ||
+        (r.hostname || '').toLowerCase().includes(q) ||
+        (r.vendor || '').toLowerCase().includes(q) ||
+        (r.mac || '').toLowerCase().includes(q)
+    );
+    renderScanHistoryTable(filtered);
+}

@@ -135,17 +135,44 @@ def login(
             raise HTTPException(status_code=403, detail="Account is disabled. Contact your administrator.")
 
         if is_account_locked(row):
+            attempts = row["login_attempts"] or 0
+            if attempts >= 11:
+                log_audit_event(
+                    username=credentials.username,
+                    role=row["role"],
+                    action="AUTH",
+                    target="system",
+                    ip_address=client_ip,
+                    details=f"Failed login attempt: account is permanently locked ({credentials.username})"
+                )
+                raise HTTPException(
+                    status_code=423,
+                    detail="ACCOUNT_LOCKED"
+                )
+            
+            # Temporary lock
+            locked_until_str = row["locked_until"]
+            try:
+                import datetime
+                lock_dt = datetime.datetime.fromisoformat(str(locked_until_str))
+                if lock_dt.tzinfo is None:
+                    lock_dt = lock_dt.replace(tzinfo=datetime.timezone.utc)
+                remaining_sec = int((lock_dt - datetime.datetime.now(datetime.timezone.utc)).total_seconds())
+                remaining_min = max(1, int(remaining_sec / 60))
+            except Exception:
+                remaining_min = 15
+
             log_audit_event(
                 username=credentials.username,
                 role=row["role"],
                 action="AUTH",
                 target="system",
                 ip_address=client_ip,
-                details=f"Failed login attempt: account is locked ({credentials.username})"
+                details=f"Failed login attempt: account is temporarily locked ({credentials.username})"
             )
             raise HTTPException(
-                status_code=429,
-                detail="Account temporarily locked due to too many failed attempts. Try again in 15 minutes."
+                status_code=403,
+                detail=f"Account locked temporarily due to failed attempts. Try again in {remaining_min} minutes."
             )
 
         allowed_ip = row["allowed_ip"] if "allowed_ip" in row.keys() else "*"
@@ -168,37 +195,77 @@ def login(
 
         if not verify_password(provided_password, row["password_hash"]):
             attempts = increment_login_attempts(conn, row["id"])
-            remaining = max(0, 5 - attempts)
-            if remaining == 0:
+            if attempts == 5:
                 log_audit_event(
                     username=credentials.username,
                     role=row["role"],
                     action="AUTH",
                     target="system",
                     ip_address=client_ip,
-                    details=f"Account locked: 5 consecutive failed login attempts reached for {credentials.username}."
+                    details=f"Account temporarily locked (Tier 1): 5 consecutive failed login attempts for {credentials.username}."
                 )
                 raise HTTPException(
-                    status_code=429,
-                    detail="Account locked for 15 minutes due to 5 failed login attempts."
+                    status_code=403,
+                    detail="Account temporarily locked for 15 minutes due to 5 consecutive failed login attempts."
                 )
+            elif attempts == 8:
+                log_audit_event(
+                    username=credentials.username,
+                    role=row["role"],
+                    action="AUTH",
+                    target="system",
+                    ip_address=client_ip,
+                    details=f"Account temporarily locked (Tier 2): 8 consecutive failed login attempts for {credentials.username}."
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Account temporarily locked for 30 minutes due to 8 consecutive failed login attempts."
+                )
+            elif attempts >= 11:
+                log_audit_event(
+                    username=credentials.username,
+                    role=row["role"],
+                    action="AUTH",
+                    target="system",
+                    ip_address=client_ip,
+                    details=f"Account PERMANENTLY LOCKED (Tier 3): 11 consecutive failed login attempts for {credentials.username}. Admin reset required."
+                )
+                raise HTTPException(
+                    status_code=423,
+                    detail="ACCOUNT_LOCKED"
+                )
+
+            # Not locked, calculate remaining attempts before next lockout tier
+            if attempts < 5:
+                remaining = 5 - attempts
+                msg_suffix = "before your account is locked for 15 minutes"
+            elif attempts < 8:
+                remaining = 8 - attempts
+                msg_suffix = "before your account is locked for 30 minutes"
+            else:
+                remaining = 11 - attempts
+                msg_suffix = "before your account is locked permanently"
+
             log_audit_event(
                 username=credentials.username,
                 role=row["role"],
                 action="AUTH",
                 target="system",
                 ip_address=client_ip,
-                details=f"Failed login attempt: incorrect password for {credentials.username}. Attempts remaining: {remaining}."
+                details=f"Failed login attempt: incorrect password for {credentials.username}. {remaining} attempt(s) remaining {msg_suffix}."
             )
-            raise INVALID_CREDS
+            raise HTTPException(
+                status_code=401,
+                detail=f"Incorrect password. {remaining} attempt{'s' if remaining != 1 else ''} remaining {msg_suffix}."
+            )
 
         reset_login_attempts(conn, row["id"])
 
         role = row["role"]
-        pin_required = (role == "super_admin")
+        pin_required = (role == "network_admin")
         must_change = bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
 
-        if role == "super_admin":
+        if role == "network_admin":
             exp_time = time.time() + 300
         else:
             exp_time = time.time() + 86400
@@ -244,14 +311,14 @@ def verify_pin(
     current_user: dict = Depends(get_current_user),
     conn: sqlite3.Connection = Depends(get_db)
 ):
-    if current_user.get("role") != "super_admin":
+    if current_user.get("role") != "network_admin":
         raise HTTPException(status_code=403, detail="PIN verification is only required for System Administrator accounts")
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT super_admin_pin_hash FROM users WHERE username = ?", (current_user["username"],))
+        cursor.execute("SELECT network_admin_pin_hash FROM users WHERE username = ?", (current_user["username"],))
         row = cursor.fetchone()
-        if not row or not row["super_admin_pin_hash"]:
+        if not row or not row["network_admin_pin_hash"]:
             raise HTTPException(status_code=400, detail="No PIN configured for this account")
 
         provided_pin = pin_data.pin
@@ -261,7 +328,7 @@ def verify_pin(
         except Exception:
             provided_pin = pin_data.pin
 
-        if not verify_password(provided_pin, row["super_admin_pin_hash"]):
+        if not verify_password(provided_pin, row["network_admin_pin_hash"]):
             raise HTTPException(status_code=400, detail="Invalid PIN")
 
         fn = current_user.get("full_name", current_user["username"])
@@ -294,7 +361,7 @@ def verify_pin(
 def set_pin(
     pin_data: PinSet,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"], require_pin=False)),
+    current_user: dict = Depends(RoleChecker(["network_admin"], require_pin=False)),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     try:
@@ -313,7 +380,7 @@ def set_pin(
             new_pin = pin_data.pin
 
         pin_hash = hash_password(new_pin)
-        cursor.execute("UPDATE users SET super_admin_pin_hash = ? WHERE username = ?",
+        cursor.execute("UPDATE users SET network_admin_pin_hash = ? WHERE username = ?",
                        (pin_hash, current_user["username"]))
         conn.commit()
 
@@ -367,7 +434,7 @@ def change_password(
 
 @router.get("/", response_model=List[User])
 def list_users(
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     try:
@@ -389,10 +456,10 @@ def list_users(
 def create_user(
     user: UserCreate,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
-    allowed_roles = ["super_admin", "operator", "user"]
+    allowed_roles = ["network_admin", "network_operator", "staff"]
     if user.role not in allowed_roles:
         raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {allowed_roles}")
 
@@ -440,7 +507,7 @@ def update_user(
     user_id: int,
     data: UserUpdateModel,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     cursor = conn.cursor()
@@ -459,7 +526,7 @@ def update_user(
         if not updates:
             return dict(row)
 
-        if "role" in updates and updates["role"] not in ["super_admin", "operator", "user"]:
+        if "role" in updates and updates["role"] not in ["network_admin", "network_operator", "staff"]:
             raise HTTPException(status_code=400, detail="Invalid role value")
 
         for field in ["full_name"]:
@@ -520,7 +587,7 @@ def update_user(
 def unlock_user(
     user_id: int,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     try:
@@ -549,7 +616,7 @@ def unlock_user(
 def reset_user_password(
     user_id: int,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     try:
@@ -563,7 +630,7 @@ def reset_user_password(
         pw_hash = hash_password(default_pw)
 
         cursor.execute(
-            "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?",
+            "UPDATE users SET password_hash = ?, must_change_password = 1, login_attempts = 0, locked_until = NULL WHERE id = ?",
             (pw_hash, user_id)
         )
         conn.commit()
@@ -584,7 +651,7 @@ def reset_user_password(
 def delete_user(
     user_id: int,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin"])),
+    current_user: dict = Depends(RoleChecker(["network_admin"])),
     conn: sqlite3.Connection = Depends(get_db)
 ):
     try:

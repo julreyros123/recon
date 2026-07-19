@@ -81,7 +81,7 @@ def get_device(device_id: int, current_user: dict = Depends(get_current_user), d
     return dict(row)
 
 @router.post("/", response_model=Device)
-def create_device(device: DeviceCreate, current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+def create_device(device: DeviceCreate, current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])), db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     trust_lvl = device.trust_level or ("Trusted" if device.is_trusted else "Unknown")
     registered_by = device.registered_by or current_user["username"]
@@ -111,7 +111,7 @@ def create_device(device: DeviceCreate, current_user: dict = Depends(RoleChecker
         raise HTTPException(status_code=400, detail="Device creation failed")
 
 @router.put("/{device_id}", response_model=Device)
-def update_device(device_id: int, device: DeviceUpdate, current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+def update_device(device_id: int, device: DeviceUpdate, current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])), db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     
     cursor.execute("SELECT * FROM devices WHERE id = ?", (device_id,))
@@ -159,7 +159,7 @@ def update_device(device_id: int, device: DeviceUpdate, current_user: dict = Dep
         raise HTTPException(status_code=400, detail="Device update failed")
 
 @router.delete("/{device_id}")
-def delete_device(device_id: int, current_user: dict = Depends(RoleChecker(["super_admin"])), db: sqlite3.Connection = Depends(get_db)):
+def delete_device(device_id: int, current_user: dict = Depends(RoleChecker(["network_admin"])), db: sqlite3.Connection = Depends(get_db)):
     try:
         cursor = db.cursor()
         cursor.execute("SELECT * FROM devices WHERE id = ?", (device_id,))
@@ -185,91 +185,72 @@ def execute_background_scan(subnet: Optional[str] = None):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT ip, mac, hostname, status FROM devices")
-        old_devices = {row["ip"]: dict(row) for row in cursor.fetchall()}
-        
+        import ipaddress
+
+        # -- Parse the scanned subnet
+        try:
+            scan_net = ipaddress.ip_network(scan_result["subnet"], strict=False)
+        except Exception:
+            scan_net = None
+
+        # -- Collect IPs discovered in this scan
+        scanned_ips = {dev["ip"] for dev in scan_result["devices"]}
+
+        # -- Step 1: Delete untrusted devices that fall in the scanned subnet
+        # Trusted (is_trusted=1) devices are NEVER deleted -- they live in Inventory.
+        if scan_net:
+            cursor.execute("SELECT id, ip FROM devices WHERE is_trusted = 0")
+            untrusted_rows = cursor.fetchall()
+            ids_to_delete = []
+            for row in untrusted_rows:
+                try:
+                    if ipaddress.ip_address(row["ip"]) in scan_net:
+                        ids_to_delete.append(row["id"])
+                except Exception:
+                    pass
+            if ids_to_delete:
+                placeholders = ",".join("?" * len(ids_to_delete))
+                cursor.execute(f"DELETE FROM devices WHERE id IN ({placeholders})", ids_to_delete)
+
+        # -- Step 2: Insert / update devices from fresh scan results
         active_count = 0
         total_count = len(scan_result["devices"])
-        scanned_ips = set()
-        
+
         for dev in scan_result["devices"]:
             ip = dev["ip"]
-            scanned_ips.add(ip)
-            
             if dev["status"] == "active":
                 active_count += 1
-                
-            if ip in old_devices:
-                old_dev = old_devices[ip]
-                changes = []
-                
-                if old_dev["status"] != dev["status"]:
-                    changes.append(f"status: {old_dev['status']} -> {dev['status']}")
-                    
-                new_mac = dev.get("mac")
-                if new_mac and old_dev["mac"] != new_mac and new_mac != "unknown":
-                    changes.append(f"MAC: {old_dev['mac']} -> {new_mac}")
-                    
-                new_hn = dev.get("hostname")
-                if new_hn and old_dev["hostname"] != new_hn:
-                    changes.append(f"hostname: {old_dev['hostname']} -> {new_hn}")
-                    
-                old_ports = old_dev.get("open_ports")
-                new_ports = dev.get("open_ports")
-                if new_ports and old_ports != new_ports:
-                    try:
-                        old_p_list = [p["port"] for p in json.loads(old_ports)] if old_ports else []
-                        new_p_list = [p["port"] for p in json.loads(new_ports)]
-                        new_opened = set(new_p_list) - set(old_p_list)
-                        if new_opened:
-                            changes.append(f"new ports: {list(new_opened)}")
-                            cursor.execute(
-                                "INSERT INTO network_alerts (alert_type, severity, title, description, source_ip, source_mac) VALUES (?, ?, ?, ?, ?, ?)",
-                                ('ANOMALOUS_NETWORK', 'Medium', 'Anomalous Port Opened', f"Device unexpectedly opened new ports: {list(new_opened)}", ip, dev.get("mac", "unknown"))
-                            )
-                            push_event("network_alert", {
-                                "alert_type": "ANOMALOUS_NETWORK",
-                                "severity": "Medium",
-                                "title": "Anomalous Port Opened",
-                                "description": f"Device {ip} unexpectedly opened new ports: {list(new_opened)}",
-                                "source_ip": ip,
-                                "source_mac": dev.get("mac", "unknown")
-                            })
-                    except Exception:
-                        pass
-                
-                if changes:
-                    cursor.execute(
-                        "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES ('system', 'system', 'UPDATE', ?, '127.0.0.1', ?)",
-                        (dev.get("mac") or ip, f"Scan detected changes on device at {ip}: {', '.join(changes)}")
-                    )
-                    
-                detected_os = dev.get("current_os") or ""
-                cursor.execute("""
-                    UPDATE devices SET
-                        mac = COALESCE(?, mac),
-                        hostname = COALESCE(?, hostname),
-                        vendor = COALESCE(?, vendor),
-                        status = ?,
-                        open_ports = COALESCE(?, open_ports),
-                        os_type = COALESCE(?, os_type),
-                        current_os = CASE WHEN ? != '' THEN ? ELSE current_os END,
-                        last_seen = CURRENT_TIMESTAMP
-                    WHERE ip = ?
-                """, (dev.get("mac"), dev.get("hostname"), dev.get("vendor"), dev["status"],
-                      dev.get("open_ports"), dev.get("os_type"),
-                      detected_os, detected_os, ip))
-                
+
+            # Check if a TRUSTED device already occupies this IP
+            cursor.execute("SELECT id FROM devices WHERE ip = ? AND is_trusted = 1", (ip,))
+            trusted_row = cursor.fetchone()
+
+            if trusted_row:
+                # Just refresh the status/last_seen of trusted devices
+                cursor.execute(
+                    "UPDATE devices SET status = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?",
+                    (dev["status"], trusted_row["id"])
+                )
             else:
+                # Fresh insert of newly discovered untrusted device
+                detected_os = dev.get("current_os") or None
+                cursor.execute("""
+                    INSERT INTO devices (ip, mac, hostname, vendor, status, open_ports, os_type,
+                                        is_trusted, trust_level, baseline_os, current_os, last_seen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'Unknown', ?, ?, CURRENT_TIMESTAMP)
+                """, (ip, dev.get("mac"), dev.get("hostname"), dev.get("vendor"),
+                      dev["status"], dev.get("open_ports"), dev.get("os_type"),
+                      detected_os, detected_os))
+
                 cursor.execute(
                     "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES ('system', 'system', 'REGISTER', ?, '127.0.0.1', ?)",
-                    (dev.get("mac") or ip, f"New device auto-discovered on network scan: {dev.get('hostname') or 'Unknown'} (IP: {ip})")
+                    (dev.get("mac") or ip, f"Device discovered on scan: {dev.get('hostname') or 'Unknown'} (IP: {ip})")
                 )
-                
                 cursor.execute(
                     "INSERT INTO network_alerts (alert_type, severity, title, description, source_ip, source_mac) VALUES (?, ?, ?, ?, ?, ?)",
-                    ('UNKNOWN_DEVICE', 'Low', 'Untrusted Device Connected', f"A new, unregistered device connected to the network (Hostname: {dev.get('hostname', 'Unknown')}).", ip, dev.get("mac", "unknown"))
+                    ('UNKNOWN_DEVICE', 'Low', 'Untrusted Device Connected',
+                     f"A new, unregistered device connected to the network (Hostname: {dev.get('hostname', 'Unknown')}).",
+                     ip, dev.get("mac", "unknown"))
                 )
                 push_event("network_alert", {
                     "alert_type": "UNKNOWN_DEVICE",
@@ -279,17 +260,6 @@ def execute_background_scan(subnet: Optional[str] = None):
                     "source_ip": ip,
                     "source_mac": dev.get("mac", "unknown")
                 })
-                
-                detected_os = None
-
-                cursor.execute("""
-                    INSERT INTO devices (ip, mac, hostname, vendor, status, open_ports, os_type,
-                                        is_trusted, trust_level, baseline_os, current_os, last_seen)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'Unknown', ?, ?, CURRENT_TIMESTAMP)
-                """, (ip, dev.get("mac"), dev.get("hostname"), dev.get("vendor"),
-                      dev["status"], dev.get("open_ports"), dev.get("os_type"),
-                      detected_os or None, detected_os or None))
-
                 push_event("new_device", {
                     "ip": ip,
                     "mac": dev.get("mac"),
@@ -299,6 +269,27 @@ def execute_background_scan(subnet: Optional[str] = None):
                     "message": f"New unregistered device detected: {dev.get('hostname') or ip}"
                 })
 
+        # -- Step 3: Mark trusted devices NOT found in this scan as inactive
+        if scan_net:
+            cursor.execute("SELECT id, ip, mac, hostname FROM devices WHERE is_trusted = 1 AND status = 'active'")
+            active_trusted = cursor.fetchall()
+            for row in active_trusted:
+                try:
+                    if ipaddress.ip_address(row["ip"]) in scan_net and row["ip"] not in scanned_ips:
+                        cursor.execute(
+                            "UPDATE devices SET status = 'inactive', last_seen = CURRENT_TIMESTAMP WHERE id = ?",
+                            (row["id"],)
+                        )
+                        push_event("device_offline", {
+                            "ip": row["ip"],
+                            "mac": row["mac"],
+                            "hostname": row["hostname"] or "Unknown",
+                            "message": f"Registered device {row['hostname'] or row['ip']} went offline"
+                        })
+                except Exception:
+                    pass
+
+        # -- Step 4: SNMP enrichment for active devices
         for dev in scan_result["devices"]:
             if dev["status"] != "active":
                 continue
@@ -307,8 +298,8 @@ def execute_background_scan(subnet: Optional[str] = None):
             db_row = cursor.fetchone()
             if not db_row:
                 continue
-            dev_id   = db_row["id"]
-            op_json  = db_row["open_ports"]
+            dev_id  = db_row["id"]
+            op_json = db_row["open_ports"]
             enriched = enrich_device_via_snmp(ip, open_ports_json=op_json)
             if enriched:
                 set_clauses = []
@@ -321,10 +312,9 @@ def execute_background_scan(subnet: Optional[str] = None):
                 existing = cursor.fetchone()
                 for field, value in enriched.items():
                     if field in ("hostname", "site_location", "admin_contact", "firmware_version", "model"):
-                        if existing and existing[field] if field in existing.keys() else True:
-                            if not (existing and field in existing.keys() and existing[field]):
-                                set_clauses.append(f"{field} = ?")
-                                params.append(value)
+                        if not (existing and field in existing.keys() and existing[field]):
+                            set_clauses.append(f"{field} = ?")
+                            params.append(value)
                     else:
                         set_clauses.append(f"{field} = ?")
                         params.append(1 if value else 0)
@@ -335,46 +325,36 @@ def execute_background_scan(subnet: Optional[str] = None):
                         params
                     )
 
-        import ipaddress
-        try:
-            scan_net = ipaddress.ip_network(scan_result["subnet"])
-        except Exception:
-            scan_net = None
-
-        for old_ip, old_dev in old_devices.items():
-            in_subnet = False
-            if scan_net:
-                try:
-                    in_subnet = ipaddress.ip_address(old_ip) in scan_net
-                except Exception:
-                    in_subnet = False
-            
-            if in_subnet and old_ip not in scanned_ips and old_dev["status"] == "active":
-                cursor.execute("UPDATE devices SET status = 'inactive', last_seen = CURRENT_TIMESTAMP WHERE ip = ?", (old_ip,))
-                
-                cursor.execute(
-                    "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES ('system', 'system', 'UPDATE', ?, '127.0.0.1', ?)",
-                    (old_dev["mac"] or old_ip, f"Device {old_dev['hostname'] or 'Unknown'} went offline (status changed: active -> inactive)")
-                )
-
-                push_event("device_offline", {
-                    "ip": old_ip,
-                    "mac": old_dev.get("mac"),
-                    "hostname": old_dev.get("hostname") or "Unknown",
-                    "message": f"Device {old_dev.get('hostname') or old_ip} went offline"
-                })
-
+        # -- Step 5: Write scan report
         summary = f"Completed {scan_result['scan_method']} scan on {scan_result['subnet']}. Duration: {scan_result['duration_seconds']}s."
         cursor.execute(
             "INSERT INTO reports (devices_found, active_devices, scan_duration_secs, summary) VALUES (?, ?, ?, ?)",
             (total_count, active_count, scan_result["duration_seconds"], summary)
         )
-        
+        scan_id = cursor.lastrowid
+
         cursor.execute(
             "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES ('system', 'system', 'SCAN', ?, '127.0.0.1', ?)",
-            (subnet or "192.168.1.0/24", f"Automated background scan completed on {subnet or '192.168.1.0/24'}. Found {total_count} devices, {active_count} active.")
+            (subnet or "auto", f"Scan completed on {scan_result['subnet']}. Found {total_count} devices, {active_count} active.")
         )
-        
+
+        # -- Step 6: Archive all discovered devices to scan_history
+        for dev in scan_result["devices"]:
+            cursor.execute("""
+                INSERT INTO scan_history (scan_id, ip, mac, hostname, vendor, os_type, open_ports, status, subnet)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                scan_id,
+                dev.get("ip"),
+                dev.get("mac"),
+                dev.get("hostname"),
+                dev.get("vendor"),
+                dev.get("os_type"),
+                dev.get("open_ports"),
+                dev.get("status"),
+                scan_result["subnet"]
+            ))
+
         conn.commit()
 
         push_event("scan_complete", {
@@ -390,8 +370,9 @@ def execute_background_scan(subnet: Optional[str] = None):
     finally:
         conn.close()
 
+
 @router.post("/scan")
-def trigger_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None, current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):
+def trigger_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None, current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"]))):
     if subnet:
         cidr_pattern = r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
         if not re.match(cidr_pattern, subnet):
@@ -409,7 +390,7 @@ def trigger_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None
     return {"message": "Scan initiated in background. Check /reports or list devices for updates."}
 
 @router.post("/{device_id}/scan-ports")
-async def scan_device_ports(device_id: int, current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+async def scan_device_ports(device_id: int, current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])), db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     cursor.execute("SELECT ip, hostname, mac FROM devices WHERE id = ?", (device_id,))
     row = cursor.fetchone()
@@ -443,7 +424,7 @@ async def scan_device_ports(device_id: int, current_user: dict = Depends(RoleChe
         raise HTTPException(status_code=500, detail="Port scan failed")
 
 @router.post("/{device_id}/toggle-trust")
-def toggle_device_trust(device_id: int, current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+def toggle_device_trust(device_id: int, current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])), db: sqlite3.Connection = Depends(get_db)):
     try:
         cursor = db.cursor()
         cursor.execute("SELECT mac, ip, hostname, is_trusted FROM devices WHERE id = ?", (device_id,))
@@ -473,7 +454,7 @@ def toggle_device_trust(device_id: int, current_user: dict = Depends(RoleChecker
         raise HTTPException(status_code=500, detail="Failed to toggle device trust")
 
 @router.post("/clear")
-def clear_all_devices(current_user: dict = Depends(RoleChecker(["super_admin"])), db: sqlite3.Connection = Depends(get_db)):
+def clear_all_devices(current_user: dict = Depends(RoleChecker(["network_admin"])), db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     try:
         cursor.execute("DELETE FROM devices")
@@ -492,7 +473,7 @@ def clear_all_devices(current_user: dict = Depends(RoleChecker(["super_admin"]))
         raise HTTPException(status_code=500, detail="Database clear failed")
 
 @router.post("/seed")
-def seed_demo_devices(current_user: dict = Depends(RoleChecker(["super_admin", "operator"])), db: sqlite3.Connection = Depends(get_db)):
+def seed_demo_devices(current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])), db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     try:
         # Clear existing first to make it a clean demo state

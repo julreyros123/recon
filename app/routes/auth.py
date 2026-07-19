@@ -32,15 +32,16 @@ if not SECRET_KEY:
 security_scheme = HTTPBearer()
 
 # ── RBAC Role Hierarchy ───────────────────────────────────────
-# super_admin > operator > user
+# network_admin > network_operator > user
 ROLE_HIERARCHY = {
-    "super_admin": 3,
-    "operator": 2,
-    "user": 1,
+    "network_admin": 3,
+    "network_operator": 2,
+    "staff": 1,
 }
 
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_MINUTES = 15
+MAX_LOGIN_ATTEMPTS = 3        # Lock account after this many consecutive failures
+LOCKOUT_PERMANENT = True      # Lockout requires admin reset (not time-based)
+LOCKOUT_MINUTES = 15          # Fallback if LOCKOUT_PERMANENT is False
 
 # ── Token functions ───────────────────────────────────────────
 def generate_token(payload: dict) -> str:
@@ -90,18 +91,34 @@ def is_account_locked(user_row) -> bool:
         return False
 
 def increment_login_attempts(conn, user_id: int) -> int:
-    """Increments failed attempts counter. Locks account after MAX_LOGIN_ATTEMPTS."""
+    """Increments failed attempts counter. Applies tiered lockouts:
+       - 5 attempts -> 15 min lock
+       - 8 attempts -> 30 min lock
+       - 11 attempts -> permanent lock
+    """
     cursor = conn.cursor()
     cursor.execute("SELECT login_attempts FROM users WHERE id = ?", (user_id,))
     row = cursor.fetchone()
     attempts = (row["login_attempts"] or 0) + 1 if row else 1
 
-    if attempts >= MAX_LOGIN_ATTEMPTS:
+    if attempts == 5:
         lock_until = (datetime.datetime.now(datetime.timezone.utc) +
-                      datetime.timedelta(minutes=LOCKOUT_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
+                      datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
             "UPDATE users SET login_attempts = ?, locked_until = ? WHERE id = ?",
             (attempts, lock_until, user_id)
+        )
+    elif attempts == 8:
+        lock_until = (datetime.datetime.now(datetime.timezone.utc) +
+                      datetime.timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "UPDATE users SET login_attempts = ?, locked_until = ? WHERE id = ?",
+            (attempts, lock_until, user_id)
+        )
+    elif attempts >= 11:
+        cursor.execute(
+            "UPDATE users SET login_attempts = ?, locked_until = '9999-12-31 23:59:59' WHERE id = ?",
+            (attempts, user_id)
         )
     else:
         cursor.execute("UPDATE users SET login_attempts = ? WHERE id = ?", (attempts, user_id))
@@ -144,7 +161,7 @@ class RoleChecker:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied: requires one of {self.allowed_roles}",
             )
-        if self.require_pin and role == "super_admin" and not user.get("pin_verified", False):
+        if self.require_pin and role == "network_admin" and not user.get("pin_verified", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Super admin PIN verification required.",
@@ -165,7 +182,7 @@ class MinRoleChecker:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: insufficient privilege level",
             )
-        if self.require_pin and role == "super_admin" and not user.get("pin_verified", False):
+        if self.require_pin and role == "network_admin" and not user.get("pin_verified", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Super admin PIN verification required.",

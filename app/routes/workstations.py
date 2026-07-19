@@ -264,7 +264,7 @@ def resolve_workstation_alert(
     alert_id: int,
     resolution: AlertResolve,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
@@ -393,7 +393,7 @@ def get_workstation_detail_telemetry(device_id: int, current_user: dict = Depend
 def isolate_workstation(
     device_id: int,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()

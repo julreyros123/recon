@@ -43,10 +43,10 @@ def verify_password(password: str, stored_hash: str) -> bool:
     except Exception:
         return False
 
-ALLOWED_TABLES = {"devices", "users", "employees", "workspaces", "workspace_devices", "reports", "audit_logs", "workstation_telemetry", "workstation_alerts", "network_alerts", "cve_cache", "device_cves"}
+ALLOWED_TABLES = {"devices", "users", "employees", "workspaces", "workspace_devices", "reports", "audit_logs", "workstation_telemetry", "workstation_alerts", "network_alerts", "cve_cache", "device_cves", "scan_history"}
 ALLOWED_COLUMNS = {
     "devices": {"id", "ip", "mac", "hostname", "vendor", "status", "last_seen", "open_ports", "os_type", "is_trusted", "owner_name", "department", "purpose", "trust_level", "registered_by", "date_registered", "serial_number", "model", "firmware_version", "latest_firmware", "firmware_eol", "warranty_expiry", "purchase_date", "vlan", "switch_port", "site_location", "rack_position", "admin_contact", "ssh_enabled", "telnet_enabled", "snmp_enabled", "http_mgmt_enabled", "mfa_enforced", "local_users", "baseline_os", "current_os"},
-    "users": {"id", "username", "email", "full_name", "role", "is_active", "password_hash", "login_attempts", "locked_until", "super_admin_pin_hash", "last_login", "allowed_ip"},
+    "users": {"id", "username", "email", "full_name", "role", "is_active", "password_hash", "login_attempts", "locked_until", "network_admin_pin_hash", "last_login", "allowed_ip", "must_change_password"},
     "employees": {"id", "user_id", "employee_id", "full_name", "position", "department", "email", "phone", "date_hired", "is_active", "created_by", "date_created"},
     "workspaces": {"id", "name", "description", "location", "created_by", "date_created"},
     "workspace_devices": {"id", "workspace_id", "device_id", "added_by", "date_added"},
@@ -56,7 +56,8 @@ ALLOWED_COLUMNS = {
     "workstation_alerts": {"id", "device_id", "timestamp", "alert_type", "severity", "title", "description", "status", "resolved_by", "resolution_notes", "date_resolved"},
     "network_alerts": {"id", "timestamp", "alert_type", "severity", "title", "description", "source_ip", "source_mac", "status", "resolved_by", "resolution_notes", "date_resolved"},
     "cve_cache": {"id", "query_key", "cve_data", "fetched_at"},
-    "device_cves": {"id", "device_id", "cve_id", "severity", "cvss_score", "description", "published_date", "last_checked"}
+    "device_cves": {"id", "device_id", "cve_id", "severity", "cvss_score", "description", "published_date", "last_checked"},
+    "scan_history": {"id", "scan_id", "ip", "mac", "hostname", "vendor", "os_type", "open_ports", "status", "subnet", "discovered_at"}
 }
 
 def _add_column_if_missing(cursor, table: str, col: str, definition: str):
@@ -151,12 +152,12 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             email TEXT,
             full_name TEXT,
-            role TEXT DEFAULT 'user',
+            role TEXT DEFAULT 'staff',
             is_active INTEGER DEFAULT 1,
             password_hash TEXT,
             login_attempts INTEGER DEFAULT 0,
             locked_until DATETIME,
-            super_admin_pin_hash TEXT,
+            network_admin_pin_hash TEXT,
             last_login DATETIME,
             allowed_ip TEXT DEFAULT '*',
             must_change_password INTEGER DEFAULT 0
@@ -167,7 +168,7 @@ def init_db():
         ("full_name",             "TEXT"),
         ("login_attempts",        "INTEGER DEFAULT 0"),
         ("locked_until",          "DATETIME"),
-        ("super_admin_pin_hash",  "TEXT"),
+        ("network_admin_pin_hash",  "TEXT"),
         ("last_login",            "DATETIME"),
         ("password_hash",         "TEXT"),
         ("allowed_ip",            "TEXT DEFAULT '*'"),
@@ -175,7 +176,7 @@ def init_db():
     ]:
         _add_column_if_missing(cursor, "users", col, defn)
     
-    cursor.execute("UPDATE users SET role = 'super_admin' WHERE role = 'administrator'")
+    cursor.execute("UPDATE users SET role = 'network_admin' WHERE role = 'administrator'")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS employees (
@@ -317,6 +318,23 @@ def init_db():
             FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scan_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id INTEGER,
+            ip TEXT,
+            mac TEXT,
+            hostname TEXT,
+            vendor TEXT,
+            os_type TEXT,
+            open_ports TEXT,
+            status TEXT,
+            subnet TEXT,
+            discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (scan_id) REFERENCES reports(id) ON DELETE SET NULL
+        )
+    """)
+
 
     cursor.execute("SELECT COUNT(*) AS cnt FROM devices")
     if cursor.fetchone()["cnt"] == 0:
@@ -343,36 +361,42 @@ def init_db():
     cursor.execute("SELECT COUNT(*) AS cnt FROM users")
     if cursor.fetchone()["cnt"] == 0:
         cursor.executemany(
-            "INSERT INTO users (username, email, role, is_active, password_hash, full_name, allowed_ip) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (username, email, role, is_active, password_hash, full_name, allowed_ip, network_admin_pin_hash) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                ("admin",    encrypt_pii("admin@reconnds.local"),    "super_admin", 1, hash_password("admin123"),    encrypt_pii("System Administrator"), "*"),
-                ("operator", encrypt_pii("operator@reconnds.local"), "operator",    1, hash_password("operator123"), encrypt_pii("IT Operator"),          "*"),
-                ("jane.doe", encrypt_pii("jane@reconnds.local"),     "user",        1, hash_password("jane123"),     encrypt_pii("Jane Doe"),             "*"),
+                ("net.admin",    encrypt_pii("net.admin@reconnds.local"),    "network_admin",    1, hash_password("admin123"),    encrypt_pii("Alex Rivera"),    "*", hash_password("123456")),
+                ("net.operator", encrypt_pii("net.operator@reconnds.local"), "network_operator", 1, hash_password("operator123"), encrypt_pii("Carlos Mendez"), "*", None),
+                ("j.reyes",      encrypt_pii("j.reyes@reconnds.local"),      "staff",            1, hash_password("staff123"),    encrypt_pii("Jane Reyes"),    "*", None),
             ],
         )
     else:
         cursor.execute("SELECT id, username FROM users WHERE password_hash IS NULL")
         for row in cursor.fetchall():
             uid, uname = row["id"], row["username"]
-            pw = "admin123" if uname in ("admin", "super_admin") else ("operator123" if uname == "operator" else "jane123")
+            if uname in ("net.admin", "admin"):
+                pw = "admin123"
+            elif uname in ("net.operator", "operator", "network_operator"):
+                pw = "operator123"
+            else:
+                pw = "staff123"
             cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(pw), uid))
-        cursor.execute("UPDATE users SET username = 'jane.doe' WHERE username = 'Jane Doe'")
 
     cursor.execute("SELECT COUNT(*) AS cnt FROM employees")
     if cursor.fetchone()["cnt"] == 0:
-        cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+        cursor.execute("SELECT id FROM users WHERE username IN ('net.admin', 'admin')")
         r = cursor.fetchone(); admin_uid = r["id"] if r else None
-        cursor.execute("SELECT id FROM users WHERE username IN ('jane.doe', 'Jane Doe')")
+        cursor.execute("SELECT id FROM users WHERE username IN ('j.reyes', 'jane.doe')")
         r = cursor.fetchone(); jane_uid = r["id"] if r else None
+        cursor.execute("SELECT id FROM users WHERE username IN ('net.operator', 'operator')")
+        r = cursor.fetchone(); operator_uid = r["id"] if r else None
         cursor.executemany(
             "INSERT INTO employees (user_id, employee_id, full_name, position, department, email, phone, date_hired, created_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                (admin_uid, encrypt_pii("EMP-001"), encrypt_pii("System Administrator"), encrypt_pii("Super Admin"),      encrypt_pii("IT"),              encrypt_pii("admin@reconnds.local"),   encrypt_pii("+1-555-0001"), "2020-01-01", "admin"),
-                (jane_uid,  encrypt_pii("EMP-002"), encrypt_pii("Jane Doe"),             encrypt_pii("HR Coordinator"),   encrypt_pii("Human Resources"), encrypt_pii("jane@reconnds.local"),    encrypt_pii("+1-555-0002"), "2022-03-15", "admin"),
-                (None,      encrypt_pii("EMP-003"), encrypt_pii("John Smith"),           encrypt_pii("Network Engineer"), encrypt_pii("IT"),              encrypt_pii("jsmith@reconnds.local"),  encrypt_pii("+1-555-0003"), "2021-07-10", "admin"),
-                (None,      encrypt_pii("EMP-004"), encrypt_pii("Maria Garcia"),         encrypt_pii("Finance Analyst"),  encrypt_pii("Finance"),         encrypt_pii("mgarcia@reconnds.local"), encrypt_pii("+1-555-0004"), "2023-01-20", "admin"),
+                (admin_uid,    encrypt_pii("EMP-001"), encrypt_pii("Alex Rivera"),    encrypt_pii("Network Administrator"), encrypt_pii("Network & Security"), encrypt_pii("net.admin@reconnds.local"),    encrypt_pii("+1-555-0001"), "2020-01-01", "net.admin"),
+                (jane_uid,     encrypt_pii("EMP-002"), encrypt_pii("Jane Reyes"),     encrypt_pii("Staff / Viewer"),        encrypt_pii("Human Resources"),    encrypt_pii("j.reyes@reconnds.local"),     encrypt_pii("+1-555-0002"), "2022-03-15", "net.admin"),
+                (operator_uid, encrypt_pii("EMP-003"), encrypt_pii("Carlos Mendez"), encrypt_pii("Network Operator"),      encrypt_pii("Network & Security"), encrypt_pii("net.operator@reconnds.local"), encrypt_pii("+1-555-0003"), "2021-07-10", "net.admin"),
+                (None,         encrypt_pii("EMP-004"), encrypt_pii("Maria Garcia"),  encrypt_pii("Finance Analyst"),       encrypt_pii("Finance"),            encrypt_pii("mgarcia@reconnds.local"),     encrypt_pii("+1-555-0004"), "2023-01-20", "net.admin"),
             ],
         )
 
@@ -410,9 +434,9 @@ def init_db():
         cursor.executemany(
             "INSERT INTO audit_logs (username, role, action, target, ip_address, details) VALUES (?, ?, ?, ?, ?, ?)",
             [
-                ("admin",  "super_admin", "AUTH",   "system",           "127.0.0.1", "Admin console login successful"),
+                ("admin",  "network_admin", "AUTH",   "system",           "127.0.0.1", "Admin console login successful"),
                 ("system", "system",      "SCAN",   "192.168.1.0/24",   "127.0.0.1", "Automated background subnet scan completed"),
-                ("admin",  "super_admin", "POLICY", "00:11:22:33:44:55","127.0.0.1", "Toggled device trust state to Trusted"),
+                ("admin",  "network_admin", "POLICY", "00:11:22:33:44:55","127.0.0.1", "Toggled device trust state to Trusted"),
             ],
         )
 

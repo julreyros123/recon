@@ -90,7 +90,7 @@ def get_device_cves(
 def trigger_cve_check(
     device_id: int,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """

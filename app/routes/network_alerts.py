@@ -40,7 +40,7 @@ def resolve_network_alert(
     alert_id: int,
     resolution: AlertResolve,
     request: Request,
-    current_user: dict = Depends(RoleChecker(["super_admin", "operator"])),
+    current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"])),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Resolves an open network threat alert."""
@@ -79,7 +79,7 @@ def resolve_network_alert(
         raise HTTPException(status_code=500, detail="Failed to resolve alert")
 
 @router.post("/simulate/arp-spoof")
-def simulate_arp_spoof(current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):
+def simulate_arp_spoof(current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"]))):
     """Simulates an ARP spoofing attack for demonstration purposes."""
     sniffer.trigger_alert(
         alert_type="ARP_SPOOF",
@@ -92,7 +92,7 @@ def simulate_arp_spoof(current_user: dict = Depends(RoleChecker(["super_admin", 
     return {"status": "success", "message": "ARP Spoof alert generated."}
 
 @router.post("/simulate/dhcp-spoof")
-def simulate_dhcp_spoof(current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):
+def simulate_dhcp_spoof(current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"]))):
     """Simulates a rogue DHCP server attack for demonstration purposes."""
     sniffer.trigger_alert(
         alert_type="DHCP_SPOOF",
@@ -105,7 +105,7 @@ def simulate_dhcp_spoof(current_user: dict = Depends(RoleChecker(["super_admin",
     return {"status": "success", "message": "DHCP Spoof alert generated."}
 
 @router.post("/simulate/mac-spoof")
-def simulate_mac_spoof(current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):
+def simulate_mac_spoof(current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"]))):
     """Simulates MAC spoofing / impossible travel for demonstration purposes."""
     sniffer.trigger_alert(
         alert_type="MAC_SPOOF",
@@ -118,7 +118,7 @@ def simulate_mac_spoof(current_user: dict = Depends(RoleChecker(["super_admin", 
     return {"status": "success", "message": "MAC Spoof alert generated."}
 
 @router.post("/simulate/ip-spoof")
-def simulate_ip_spoof(current_user: dict = Depends(RoleChecker(["super_admin", "operator"]))):
+def simulate_ip_spoof(current_user: dict = Depends(RoleChecker(["network_admin", "network_operator"]))):
     """Simulates IP spoofing anomaly detection for demonstration purposes."""
     sniffer.trigger_alert(
         alert_type="IP_SPOOF",
